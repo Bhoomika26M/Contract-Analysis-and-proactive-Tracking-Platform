@@ -6,6 +6,7 @@ from src.entities import models
 from src import schemas
 from typing import List
 from sqlalchemy import func
+from fastapi import HTTPException
 
 app = FastAPI(title="ContractIQ API")
 app.add_middleware(
@@ -80,3 +81,84 @@ def update_obligation_status(task_id: int, status_update: schemas.ObligationStat
         db.commit()
         return {"message": "Status updated successfully!"}
     return {"error": "Task not found"}
+
+# --- USER MANAGEMENT ENDPOINTS ---
+
+@app.get("/api/users", response_model=list[schemas.UserResponse])
+def get_users(db: Session = Depends(get_db)):
+    return db.query(models.User).all()
+
+@app.post("/api/users", response_model=schemas.UserResponse)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = models.User(
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        department=user.department,
+        status=user.status
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.put("/api/users/{user_id}/status")
+def update_user_status(user_id: int, status: str, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.status = status
+        db.commit()
+        return {"message": f"User status updated to {status}"}
+    return {"error": "User not found"}
+
+@app.delete("/api/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}
+
+# --- SETTINGS ENDPOINTS ---
+
+@app.get("/api/settings/system", response_model=schemas.SystemSettingsResponse)
+def get_system_settings(db: Session = Depends(get_db)):
+    settings = db.query(models.SystemSettings).first()
+    if not settings:
+        # Auto-create default settings on first load
+        settings = models.SystemSettings(
+            renewal_warning_days=30, 
+            session_timeout=60, 
+            require_2fa=False
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+@app.put("/api/settings/system", response_model=schemas.SystemSettingsResponse)
+def update_system_settings(settings_update: schemas.SystemSettingsBase, db: Session = Depends(get_db)):
+    settings = db.query(models.SystemSettings).first()
+    
+    # Update the existing settings row
+    settings.renewal_warning_days = settings_update.renewal_warning_days
+    settings.session_timeout = settings_update.session_timeout
+    settings.require_2fa = settings_update.require_2fa
+    
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+@app.put("/api/users/{user_id}/profile")
+def update_user_profile(user_id: int, profile_data: schemas.UserProfileUpdate, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.name = profile_data.name
+    user.email = profile_data.email
+    db.commit()
+    db.refresh(user)
+    return user
