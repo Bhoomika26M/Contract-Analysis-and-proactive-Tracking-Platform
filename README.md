@@ -1,11 +1,21 @@
+# Contract-Obligation-Tracking-Assistant-07-26
 
-  # Enterprise Contract Management Dashboard
+Enterprise Contract Management Dashboard for tracking contracts, renewals, notifications, and audit activity.
 
-  This is a code bundle for Enterprise Contract Management Dashboard. The original project is available at https://www.figma.com/design/I7HlGeMPVQv3BDJwDbg5qS/Enterprise-Contract-Management-Dashboard.
+## Run the application
 
-  ## Running the code
+Install frontend dependencies:
 
-  Run `npm i` to install the dependencies.
+```bash
+npm install
+```
 
-  Run `npm run dev` to start the development server.
-  
+Start the frontend and backend in separate terminals:
+
+```bash
+npm run dev
+```
+
+```bash
+npm run backend
+```
