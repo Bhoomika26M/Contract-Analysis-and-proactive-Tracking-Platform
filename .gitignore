@@ -1,0 +1,11 @@
+# Node (React)
+node_modules/
+build/
+.env
+
+# Python (FastAPI)
+__pycache__/
+*.py[cod]
+venv/
+env/
+.pytest_cache/
