@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from ..common import now
+from ..store import PersistentList
 
 router = APIRouter(prefix="/api/v1/contracts", tags=["contracts"])
 
@@ -61,7 +62,7 @@ def validate_contract(contract: dict[str, Any]) -> dict[str, str]:
             errors[key] = message
     if contract.get("start") and contract.get("expiry") and contract["start"] >= contract["expiry"]:
         errors["expiry"] = "Expiry date must be after start date"
-    if contract.get("status") and contract["status"] not in {"Active", "Expiring", "Pending", "Archived", "Draft", "Under Review"}:
+    if contract.get("status") and contract["status"] not in {"Active", "Expiring", "Pending", "Archived", "Draft", "Under Review", "Approved", "Expired", "Terminated"}:
         errors["status"] = "Invalid contract status"
     if contract.get("risk") and contract["risk"] not in {"Low", "Medium", "High"}:
         errors["risk"] = "Risk must be Low, Medium, or High"
@@ -83,7 +84,7 @@ def seed_contracts() -> list[dict[str, Any]]:
     return [{"id": row[0], "name": row[1], "category": row[2], "owner": row[3], "start": row[4], "expiry": row[5], "value": row[6], "status": row[7], "risk": row[8], "notes": "", "createdAt": created_at} for row in rows]
 
 
-contracts = seed_contracts()
+contracts = PersistentList("contracts", seed_contracts())
 
 
 def next_contract_id() -> str:

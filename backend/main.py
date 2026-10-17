@@ -7,6 +7,9 @@ from .contracts import contracts, router as contracts_router
 from .notifications import notifications, router as notifications_router
 from .renewals import renewals, router as renewals_router
 from .audit_logs import audit_logs
+from .auth import router as auth_router
+from .routes.approvals import router as approvals_router
+from .routes.repository import router as repository_router
 
 app = FastAPI(title="ContractIQ API", version="1.0.0")
 app.add_middleware(
@@ -19,6 +22,9 @@ app.add_middleware(
 app.include_router(contracts_router)
 app.include_router(renewals_router)
 app.include_router(notifications_router)
+app.include_router(auth_router)
+app.include_router(approvals_router)
+app.include_router(repository_router)
 
 
 @app.get("/")

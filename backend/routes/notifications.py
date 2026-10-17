@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
 from ..common import now
+from ..store import PersistentList
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
@@ -58,24 +59,24 @@ class AuditLogUpdate(BaseModel):
     status: str | None = None
 
 
-notifications = [
+notifications = PersistentList("notifications", [
     {"id": 1, "type": "renewal", "title": "Contract Renewal Due", "desc": "Global Logistics Agreement expires in 31 days.", "time": "2 hours ago", "read": False},
     {"id": 2, "type": "compliance", "title": "Compliance Alert", "desc": "ISO 27001 obligation is overdue by 3 days.", "time": "4 hours ago", "read": False},
     {"id": 3, "type": "approval", "title": "Approval Request", "desc": "Sarah Chen requested approval for CTR-2407.", "time": "Yesterday", "read": False},
     {"id": 4, "type": "system", "title": "System Update", "desc": "ContractIQ v2.4 has been deployed successfully.", "time": "2 days ago", "read": True},
     {"id": 5, "type": "renewal", "title": "Reminder: Oracle ERP", "desc": "Oracle ERP License expires in 123 days.", "time": "3 days ago", "read": True},
     {"id": 6, "type": "compliance", "title": "GDPR Review Complete", "desc": "GDPR Data Review obligation marked completed.", "time": "4 days ago", "read": True},
-]
+])
 
 
-audit_logs = [
+audit_logs = PersistentList("audit_logs", [
     {"id": 1, "user": "Sarah Chen", "action": "Contract Approved", "date": "2024-07-01 09:14", "ip": "192.168.1.45", "module": "Contracts", "status": "Success"},
     {"id": 2, "user": "James Miller", "action": "Document Uploaded", "date": "2024-07-01 10:32", "ip": "10.0.0.12", "module": "Repository", "status": "Success"},
     {"id": 3, "user": "Priya Nair", "action": "Login Attempt", "date": "2024-07-01 11:00", "ip": "172.16.0.8", "module": "Auth", "status": "Failed"},
     {"id": 4, "user": "Daniel Park", "action": "Obligation Updated", "date": "2024-07-01 13:45", "ip": "192.168.1.50", "module": "Obligations", "status": "Success"},
     {"id": 5, "user": "Emma Walsh", "action": "Report Exported", "date": "2024-07-01 14:22", "ip": "10.0.0.15", "module": "Reports", "status": "Success"},
     {"id": 6, "user": "Tom Reeves", "action": "User Deactivated", "date": "2024-07-01 15:10", "ip": "192.168.1.60", "module": "Users", "status": "Success"},
-]
+])
 
 
 @router.get("/notifications")

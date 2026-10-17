@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from ..common import add_months, now, today
+from ..store import PersistentList
 
 router = APIRouter(prefix="/api/v1/renewals", tags=["renewals"])
 
@@ -77,7 +78,7 @@ def seed_renewals() -> list[dict[str, Any]]:
     return [{"id": row[0], "contractId": row[1], "name": row[2], "owner": row[3], "expiry": row[4], "value": row[5], "daysLeft": row[6], "status": row[7], "notes": "", "renewedOn": None, "extendedTo": None, "terminatedOn": None, "createdAt": created_at} for row in rows]
 
 
-renewals = seed_renewals()
+renewals = PersistentList("renewals", seed_renewals())
 
 
 def next_renewal_id() -> str:

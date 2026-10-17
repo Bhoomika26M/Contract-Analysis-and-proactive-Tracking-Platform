@@ -7,6 +7,9 @@ __pycache__/
 venv/
 .env
 .env.*
+backend/contractiq.sqlite3
+backend/contractiq.sqlite3-*
+backend/uploads/
 
 # Node / frontend
 node_modules/
