@@ -1,6 +1,24 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from src.database.core import engine, Base
+import src.auth.models
+from src.auth.controller import router as auth_router
+import src.contracts.models
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ContractIQ API")
+
+# Allow React to communicate with FastAPI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router)
 
 @app.get("/")
 def read_root():
