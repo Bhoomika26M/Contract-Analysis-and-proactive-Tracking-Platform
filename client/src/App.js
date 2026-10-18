@@ -4,6 +4,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import MainLayout from './layout/MainLayout';
+import Contracts from './pages/Contracts';
+import Obligations from './pages/Obligations';
 
 function App() {
   return (
@@ -18,7 +20,8 @@ function App() {
           {/* Protected Routes wrapped in the Layout */}
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            {/* Future routes like /contracts will go here */}
+            <Route path="/contracts" element={<Contracts />} />
+            <Route path="/obligations" element={<Obligations />} />
           </Route>
         </Routes>
       </div>

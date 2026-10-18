@@ -4,10 +4,13 @@ from src.database.core import engine, Base
 import src.auth.models
 from src.auth.controller import router as auth_router
 import src.contracts.models
+from src.contracts.controller import router as contracts_router
+from src.obligations.controller import router as obligations_router
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ContractIQ API")
+app.include_router(obligations_router)
 
 # Allow React to communicate with FastAPI
 app.add_middleware(
@@ -19,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(contracts_router)
 
 @app.get("/")
 def read_root():

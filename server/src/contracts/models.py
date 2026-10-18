@@ -9,6 +9,7 @@ class Contract(Base):
     title = Column(String, index=True, nullable=False)
     status = Column(String, default="Draft") # e.g., Draft, Active, Expired
     execution_date = Column(Date, nullable=True)
+    expiration_date = Column(Date, nullable=True)
     
     # Links the contract to the user who created it
     owner_id = Column(Integer, ForeignKey("users.id"))
