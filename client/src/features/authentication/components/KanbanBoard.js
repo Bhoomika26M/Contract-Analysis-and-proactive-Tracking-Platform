@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getObligations, updateObligationStatus } from '../services/obligationsApi';
+import { cardStyle, getStatusBadgeStyle } from '../../../uiStyles';
 
 const KanbanBoard = ({ contractId, refreshKey}) => {
   const [obligations, setObligations] = useState([]);
@@ -54,7 +55,7 @@ const KanbanBoard = ({ contractId, refreshKey}) => {
       <div 
         onDrop={(e) => handleDrop(e, statusCategory)} 
         onDragOver={handleDragOver}
-        style={{ flex: 1, backgroundColor: '#f4f6f9', padding: '15px', borderRadius: '8px', minHeight: '300px' }}
+        style={{ flex: 1, backgroundColor: '#f5f8fa', padding: '15px', borderRadius: '8px', minHeight: '300px' }}
       >
         <h3 style={{ marginTop: 0, borderBottom: '2px solid #ddd', paddingBottom: '10px' }}>{title}</h3>
         {columnTasks.map(task => (
@@ -62,9 +63,10 @@ const KanbanBoard = ({ contractId, refreshKey}) => {
             key={task.id} 
             draggable
             onDragStart={(e) => handleDragStart(e, task.id)}
-            style={{ backgroundColor: 'white', padding: '15px', marginBottom: '10px', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', cursor: 'grab' }}
+            style={{ ...cardStyle, padding: '15px', marginBottom: '10px', cursor: 'grab' }}
           >
             <strong style={{ display: 'block', marginBottom: '8px' }}>{task.description}</strong>
+            <span style={getStatusBadgeStyle(task.status || 'Pending')}>{task.status || 'Pending'}</span>
             <span style={{ fontSize: '12px', color: '#666' }}>Due: {task.due_date}</span>
           </div>
         ))}

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import relationship
 from src.database.core import Base
 
@@ -10,12 +10,27 @@ class Contract(Base):
     status = Column(String, default="Draft") # e.g., Draft, Active, Expired
     execution_date = Column(Date, nullable=True)
     expiration_date = Column(Date, nullable=True)
+    category = Column(String, nullable=True)
+    risk_level = Column(String, nullable=True)
+    approval_status = Column(String, nullable=False, default="Pending")
     
     # Links the contract to the user who created it
     owner_id = Column(Integer, ForeignKey("users.id"))
+    department = Column(String, nullable=True)
     
     # Establishes the relationship to the obligations table
     obligations = relationship("Obligation", back_populates="contract")
+
+
+class ContractApprovalLog(Base):
+    __tablename__ = "contract_approval_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    action = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
 
 class Obligation(Base):
     __tablename__ = "obligations"
@@ -27,5 +42,10 @@ class Obligation(Base):
     
     # Links the obligation to its parent contract
     contract_id = Column(Integer, ForeignKey("contracts.id"))
+    assignee_id = Column(
+        Integer,
+        ForeignKey("users.id", name="fk_obligations_assignee_id_users"),
+        nullable=True
+    )
     
     contract = relationship("Contract", back_populates="obligations")

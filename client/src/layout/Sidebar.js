@@ -1,14 +1,95 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+
+const linksByRole = {
+  Administrator: [
+    ['Dashboard', '/dashboard'],
+    ['User Management', '/users'],
+    ['Contracts', '/contracts'],
+    ['Contract Repository', '/repository'],
+    ['Contract Approval', '/approvals'],
+    ['Obligations', '/obligations'],
+    ['Renewals', '/renewals'],
+    ['Compliance', '/compliance'],
+    ['Reports', '/reports'],
+    ['Notifications', '/notifications'],
+    ['Audit Logs', '/audit'],
+    ['Settings', '/settings']
+  ],
+  'Legal Manager': [
+    ['Dashboard', '/dashboard'],
+    ['Contracts', '/contracts'],
+    ['Contract Repository', '/repository'],
+    ['Contract Approval', '/approvals'],
+    ['Obligations', '/obligations'],
+    ['Renewals', '/renewals'],
+    ['Notifications', '/notifications'],
+    ['Settings', '/settings']
+  ],
+  'Compliance Officer': [
+    ['Dashboard', '/dashboard'],
+    ['Compliance', '/compliance'],
+    ['Obligations', '/obligations'],
+    ['Reports', '/reports'],
+    ['Audit Logs', '/audit']
+  ],
+  'Contract Manager': [
+    ['Dashboard', '/dashboard'],
+    ['Contracts', '/contracts'],
+    ['Contract Repository', '/repository'],
+    ['Contract Approval', '/approvals'],
+    ['Obligations', '/obligations'],
+    ['Renewals', '/renewals']
+  ],
+  'Department Head': [
+    ['Dashboard', '/dashboard'],
+    ['Contracts', '/contracts'],
+    ['Obligations', '/obligations'],
+    ['Reports', '/reports']
+  ],
+  Employee: [
+    ['Dashboard', '/dashboard'],
+    ['My Contracts', '/contracts'],
+    ['My Tasks', '/obligations'],
+    ['Notifications', '/notifications']
+  ]
+};
 
 const Sidebar = () => {
+  const location = useLocation();
+  const userRole = localStorage.getItem('userRole') || 'Employee';
+  const links = linksByRole[userRole] || linksByRole.Employee;
+  const [hoveredPath, setHoveredPath] = React.useState(null);
+
+  const getLinkStyle = (path) => ({
+    display: 'block',
+    padding: '12px 20px',
+    color: location.pathname === path ? '#ffffff' : '#a1a5b7',
+    backgroundColor: location.pathname === path
+      ? '#4b2bf2'
+      : hoveredPath === path ? '#151521' : 'transparent',
+    textDecoration: 'none',
+    marginBottom: '5px',
+    borderRadius: '8px',
+    fontSize: '14px'
+  });
+
   return (
-    <div style={{ width: '250px', backgroundColor: '#f8f9fa', height: '100vh', padding: '20px', borderRight: '1px solid #ddd', boxSizing: 'border-box' }}>
-      <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
-        <li style={{ marginBottom: '15px' }}><Link to="/dashboard" style={{ textDecoration: 'none', color: '#333', fontSize: '18px' }}>Dashboard</Link></li>
-        <li style={{ marginBottom: '15px' }}><Link to="/contracts" style={{ textDecoration: 'none', color: '#333', fontSize: '18px' }}>Contracts</Link></li>
-        <li style={{ marginBottom: '15px' }}><Link to="/obligations" style={{ textDecoration: 'none', color: '#333', fontSize: '18px' }}>Obligations</Link></li>
-      </ul>
+    <div style={{ width: '260px', boxSizing: 'border-box', backgroundColor: '#1e1e2d', minHeight: '100vh', padding: '20px 10px', color: '#a1a5b7' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#ffffff', fontWeight: 600 }}>ContractIQ</h2>
+      <nav>
+        {links.map(([label, path]) => (
+          <Link
+            key={label}
+            to={path}
+            style={getLinkStyle(path)}
+            onMouseEnter={() => setHoveredPath(path)}
+            onMouseLeave={() => setHoveredPath(null)}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 };

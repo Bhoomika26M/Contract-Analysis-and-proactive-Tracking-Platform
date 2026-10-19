@@ -12,5 +12,7 @@ class User(Base):
     
     # Stores roles like: Administrator, Legal Manager, Compliance Officer, etc.
     role = Column(String, nullable=False) 
-    
+
+    department = Column(String, nullable=True)
+
     is_active = Column(Boolean, default=True)

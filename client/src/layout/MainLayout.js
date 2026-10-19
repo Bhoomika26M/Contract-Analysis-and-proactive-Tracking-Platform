@@ -10,7 +10,7 @@ const MainLayout = () => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Navbar />
         {/* The Outlet is where the Dashboard or Contracts page will render */}
-        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, backgroundColor: '#f4f6f9' }}>
+        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, backgroundColor: '#f5f8fa' }}>
           <Outlet /> 
         </div>
       </div>

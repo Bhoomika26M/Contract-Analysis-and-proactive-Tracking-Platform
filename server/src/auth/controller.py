@@ -1,17 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from src.database.core import get_db
 from src.auth.service import create_user, authenticate_user, create_access_token
+from src.auth.schemas import UserCreate
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-
-class UserCreate(BaseModel):
-    first_name: str
-    last_name: str
-    email: str
-    password: str
-    role: str
 
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -21,7 +15,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         last_name=user.last_name,
         email=user.email,
         password=user.password,
-        role=user.role
+        role=user.role or "Employee"
     )
     return {"message": "User registered successfully", "email": new_user.email}
 

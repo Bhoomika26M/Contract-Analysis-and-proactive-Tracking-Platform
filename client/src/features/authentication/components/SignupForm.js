@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { registerUser } from '../services/register';
 import { useNavigate, Link } from 'react-router-dom';
+import { cardStyle, primaryButtonStyle } from '../../../uiStyles';
 
 const SignupForm = () => {
   const [formData, setFormData] = useState({
@@ -8,7 +9,7 @@ const SignupForm = () => {
     last_name: '',
     email: '',
     password: '',
-    role: 'Employee' // Default role
+    role: 'Employee'
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const SignupForm = () => {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+    <div style={{ ...cardStyle, maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
       <h2>Create an Account</h2>
       
       {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
@@ -65,11 +66,11 @@ const SignupForm = () => {
             <option value="Employee">Employee</option>
           </select>
         </div>
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: '10px' }}>
+        <button type="submit" style={{ ...primaryButtonStyle, width: '100%', padding: '10px', marginBottom: '10px' }}>
           Sign Up
         </button>
         <div style={{ textAlign: 'center' }}>
-          <Link to="/login" style={{ fontSize: '14px', color: '#007bff' }}>Already have an account? Log in</Link>
+          <Link to="/login" style={{ fontSize: '14px', color: '#4b2bf2' }}>Already have an account? Log in</Link>
         </div>
       </form>
     </div>

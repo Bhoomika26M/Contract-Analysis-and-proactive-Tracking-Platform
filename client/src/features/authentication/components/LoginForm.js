@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { loginUser } from '../services/login';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import { cardStyle, primaryButtonStyle } from '../../../uiStyles';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -15,8 +16,8 @@ const LoginForm = () => {
     
     try {
       const data = await loginUser(email, password);
-      console.log("Success! Token received:", data.access_token);
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('userRole', data.role);
       alert('Login Successful!');
       navigate('/dashboard');
     } catch (err) {
@@ -26,7 +27,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+    <div style={{ ...cardStyle, maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
       <h2>Sign in to ContractIQ</h2>
       
       {/* This line displays the error variable, which clears the warning */}
@@ -53,10 +54,10 @@ const LoginForm = () => {
             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
-        <button type="submit" style={{ padding: '10px 15px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          Login
+        <button type="submit" style={{ ...primaryButtonStyle, padding: '10px 15px' }}>
+          Sign In
         </button>
-        <div style={{ textAlign: 'center', marginTop: '10px' }}><Link to="/signup" style={{ color: '#007bff', fontSize: '14px' }}>Don't have an account? Sign up</Link></div>
+        <div style={{ textAlign: 'center', marginTop: '10px' }}><Link to="/signup" style={{ color: '#4b2bf2', fontSize: '14px' }}>Don't have an account? Sign up</Link></div>
       </form>
     </div>
   );

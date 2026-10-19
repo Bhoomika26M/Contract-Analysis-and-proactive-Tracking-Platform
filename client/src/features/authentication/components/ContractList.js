@@ -1,25 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { getContracts } from '../services/contractsApi';
+import EditContractModal from './EditContractModal';
+import { cardStyle, getStatusBadgeStyle, primaryButtonStyle, tableHeaderCellStyle } from '../../../uiStyles';
 
-const ContractList = ({ refreshKey }) => {
+const ContractList = ({ refreshKey, onContractUpdated }) => {
   const [contracts, setContracts] = useState([]);
   const [error, setError] = useState('');
+  const [editingContractId, setEditingContractId] = useState(null);
+  const canEditContracts = ['Administrator', 'Contract Manager'].includes(
+    localStorage.getItem('userRole')
+  );
+
+  const handleContractUpdated = () => {
+    setEditingContractId(null);
+    if (onContractUpdated) onContractUpdated();
+  };
 
   useEffect(() => {
     const fetchContracts = async () => {
       try {
         const data = await getContracts();
         setContracts(data);
+        setError('');
       } catch (err) {
         console.error(err);
         setError('Failed to load contracts.');
       }
     };
     fetchContracts();
-  }, [refreshKey]);;
+  }, [refreshKey]);
 
   return (
-    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+    <div style={{ ...cardStyle, padding: '20px' }}>
       <h2 style={{ marginTop: 0 }}>My Contracts</h2>
       
       {error && <p style={{ color: 'red' }}>{error}</p>}
@@ -27,11 +39,14 @@ const ContractList = ({ refreshKey }) => {
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
         <thead>
           <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-            <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>ID</th>
-            <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Title</th>
-            <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Status</th>
-            <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Execution Date</th>
-            <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Expiration Date</th>
+            <th style={tableHeaderCellStyle}>ID</th>
+            <th style={tableHeaderCellStyle}>Title</th>
+            <th style={tableHeaderCellStyle}>Status</th>
+            <th style={tableHeaderCellStyle}>Execution Date</th>
+            <th style={tableHeaderCellStyle}>Expiration Date</th>
+            {canEditContracts && (
+              <th style={tableHeaderCellStyle}>Actions</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -40,18 +55,23 @@ const ContractList = ({ refreshKey }) => {
               <td style={{ padding: '12px' }}>{contract.id}</td>
               <td style={{ padding: '12px', fontWeight: '500' }}>{contract.title}</td>
               <td style={{ padding: '12px' }}>
-                <span style={{ 
-                  padding: '5px 10px', 
-                  borderRadius: '12px', 
-                  fontSize: '14px',
-                  backgroundColor: contract.status === 'Draft' ? '#e2e3e5' : '#d4edda',
-                  color: contract.status === 'Draft' ? '#383d41' : '#155724'
-                }}>
+                <span style={getStatusBadgeStyle(contract.status)}>
                   {contract.status}
                 </span>
               </td>
               <td style={{ padding: '12px' }}>{contract.execution_date || 'TBD'}</td>
               <td style={{ padding: '12px' }}>{contract.expiration_date || 'TBD'}</td>
+              {canEditContracts && (
+                <td style={{ padding: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingContractId(contract.id)}
+                    style={{ ...primaryButtonStyle, padding: '7px 12px' }}
+                  >
+                    Edit
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -59,6 +79,13 @@ const ContractList = ({ refreshKey }) => {
       
       {contracts.length === 0 && !error && (
         <p style={{ textAlign: 'center', marginTop: '20px', color: '#6c757d' }}>No contracts found.</p>
+      )}
+      {editingContractId !== null && (
+        <EditContractModal
+          contractId={editingContractId}
+          onClose={() => setEditingContractId(null)}
+          onUpdated={handleContractUpdated}
+        />
       )}
     </div>
   );

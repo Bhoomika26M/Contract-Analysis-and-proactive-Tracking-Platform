@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createObligation } from '../services/obligationsApi';
+import { cardStyle, primaryButtonStyle } from '../../../uiStyles';
 
 const ObligationForm = ({ contractId, onTaskAdded }) => {
   const [formData, setFormData] = useState({
@@ -37,7 +38,7 @@ const ObligationForm = ({ contractId, onTaskAdded }) => {
   };
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ddd' }}>
+    <div style={{ ...cardStyle, backgroundColor: '#f8f9fa', padding: '15px', marginBottom: '20px', border: '1px solid #dee2e6' }}>
       <h4 style={{ marginTop: 0, marginBottom: '15px' }}>Add New Task</h4>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
         <div style={{ flex: 2 }}>
@@ -49,7 +50,7 @@ const ObligationForm = ({ contractId, onTaskAdded }) => {
           <input type="date" name="due_date" value={formData.due_date} onChange={handleChange} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
         <div>
-          <button type="submit" style={{ padding: '9px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          <button type="submit" style={{ ...primaryButtonStyle, padding: '9px 15px' }}>
             Add Task
           </button>
         </div>

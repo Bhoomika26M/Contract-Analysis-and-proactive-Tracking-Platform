@@ -19,7 +19,14 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def create_user(db: Session, first_name: str, last_name: str, email: str, password: str, role: str):
+def create_user(
+    db: Session,
+    first_name: str,
+    last_name: str,
+    email: str,
+    password: str,
+    role: str = "Employee"
+):
     hashed_password = get_password_hash(password)
     db_user = User(
         first_name=first_name, 
