@@ -1,0 +1,58 @@
+.auth-submit-button {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.auth-submit-button:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.auth-submit-button:focus-visible {
+  outline: 3px solid rgba(58, 27, 177, 0.3);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .auth-layout {
+    height: auto !important;
+    min-height: 100vh;
+    width: 100% !important;
+    flex-direction: column;
+    overflow: auto !important;
+  }
+
+  .auth-branding-panel,
+  .auth-form-panel {
+    width: 100% !important;
+  }
+
+  .auth-branding-panel {
+    min-height: 260px;
+    padding: 32px 24px !important;
+  }
+
+  .auth-branding-panel svg {
+    display: none !important;
+  }
+
+  .auth-branding-panel > div > div {
+    margin-bottom: 0 !important;
+  }
+
+  .auth-branding-panel h1 {
+    font-size: 2.25rem !important;
+  }
+
+  .auth-branding-panel p {
+    font-size: 15px !important;
+  }
+
+  .auth-form-panel {
+    flex: 1;
+    padding: 28px 20px !important;
+  }
+
+  .auth-form-card {
+    padding: 28px !important;
+  }
+}

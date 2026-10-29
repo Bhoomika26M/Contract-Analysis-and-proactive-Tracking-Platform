@@ -18,20 +18,17 @@ GLOBAL_VISIBILITY_ROLES = {
 def apply_contract_visibility(query, current_user: User):
     if current_user.role in GLOBAL_VISIBILITY_ROLES:
         return query
-    if current_user.role == "Department Head":
+    if current_user.role in {"Department Head", "Employee"}:
         if not current_user.department:
             return query.filter(false())
-        return query.filter(Contract.department == current_user.department)
-    if current_user.role == "Employee":
-        return query.filter(Contract.owner_id == current_user.id)
+        return query.filter(Contract.department.ilike(current_user.department))
     return query.filter(false())
 
 
 def create_contract(
     db: Session,
     contract: ContractCreate,
-    user_id: int,
-    department: Optional[str] = None
+    user_id: int
 ):
     # Create the contract and assign it to the logged-in user
     db_contract = Contract(
@@ -42,7 +39,7 @@ def create_contract(
         category=contract.category,
         risk_level=contract.risk_level,
         owner_id=user_id,
-        department=department
+        department=contract.department
     )
     db.add(db_contract)
     db.commit()
@@ -50,7 +47,10 @@ def create_contract(
     return db_contract
 
 def get_all(db: Session, current_user: User):
-    return apply_contract_visibility(db.query(Contract), current_user).all()
+    return apply_contract_visibility(
+        db.query(Contract),
+        current_user
+    ).all()
 
 
 def get_contract_analytics(db: Session, current_user: User):
@@ -149,6 +149,38 @@ def update_contract(
     db.commit()
     db.refresh(db_contract)
     return db_contract
+
+
+def update_contract_status(
+    db: Session,
+    contract_id: int,
+    new_status: str
+):
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if contract is None:
+        return None
+
+    contract.status = new_status
+    db.commit()
+    db.refresh(contract)
+    return contract
+
+
+def renew_contract(
+    db: Session,
+    contract_id: int,
+    expiration_date: date,
+    current_user: User
+):
+    contract = get_contract_for_user(db, contract_id, current_user)
+    if contract is None:
+        return None
+
+    contract.expiration_date = expiration_date
+    contract.status = "Active"
+    db.commit()
+    db.refresh(contract)
+    return contract
 
 
 def get_pending_contracts(db: Session, current_user: User):

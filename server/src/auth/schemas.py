@@ -18,6 +18,7 @@ class UserCreate(BaseModel):
     email: str
     password: str
     role: UserRole = "Employee"
+    department: Optional[str] = None
 
 
 class UserResponse(BaseModel):

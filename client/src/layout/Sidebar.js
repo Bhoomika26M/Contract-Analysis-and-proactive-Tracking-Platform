@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const linksByRole = {
@@ -12,7 +12,6 @@ const linksByRole = {
     ['Renewals', '/renewals'],
     ['Compliance', '/compliance'],
     ['Reports', '/reports'],
-    ['Notifications', '/notifications'],
     ['Audit Logs', '/audit'],
     ['Settings', '/settings']
   ],
@@ -23,7 +22,6 @@ const linksByRole = {
     ['Contract Approval', '/approvals'],
     ['Obligations', '/obligations'],
     ['Renewals', '/renewals'],
-    ['Notifications', '/notifications'],
     ['Settings', '/settings']
   ],
   'Compliance Officer': [
@@ -31,7 +29,8 @@ const linksByRole = {
     ['Compliance', '/compliance'],
     ['Obligations', '/obligations'],
     ['Reports', '/reports'],
-    ['Audit Logs', '/audit']
+    ['Audit Logs', '/audit'],
+    ['Settings', '/settings']
   ],
   'Contract Manager': [
     ['Dashboard', '/dashboard'],
@@ -39,19 +38,21 @@ const linksByRole = {
     ['Contract Repository', '/repository'],
     ['Contract Approval', '/approvals'],
     ['Obligations', '/obligations'],
-    ['Renewals', '/renewals']
+    ['Renewals', '/renewals'],
+    ['Settings', '/settings']
   ],
   'Department Head': [
     ['Dashboard', '/dashboard'],
     ['Contracts', '/contracts'],
     ['Obligations', '/obligations'],
-    ['Reports', '/reports']
+    ['Reports', '/reports'],
+    ['Settings', '/settings']
   ],
   Employee: [
     ['Dashboard', '/dashboard'],
     ['My Contracts', '/contracts'],
     ['My Tasks', '/obligations'],
-    ['Notifications', '/notifications']
+    ['Settings', '/settings']
   ]
 };
 
@@ -60,7 +61,6 @@ const Sidebar = () => {
   const userRole = localStorage.getItem('userRole') || 'Employee';
   const links = linksByRole[userRole] || linksByRole.Employee;
   const [hoveredPath, setHoveredPath] = React.useState(null);
-
   const getLinkStyle = (path) => ({
     display: 'block',
     padding: '12px 20px',
@@ -75,7 +75,7 @@ const Sidebar = () => {
   });
 
   return (
-    <div style={{ width: '260px', boxSizing: 'border-box', backgroundColor: '#1e1e2d', minHeight: '100vh', padding: '20px 10px', color: '#a1a5b7' }}>
+    <aside className="app-sidebar" style={{ width: '260px', boxSizing: 'border-box', backgroundColor: '#1e1e2d', minHeight: '100vh', padding: '20px 10px', color: '#a1a5b7', display: 'flex', flexDirection: 'column' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#ffffff', fontWeight: 600 }}>ContractIQ</h2>
       <nav>
         {links.map(([label, path]) => (
@@ -90,7 +90,7 @@ const Sidebar = () => {
           </Link>
         ))}
       </nav>
-    </div>
+    </aside>
   );
 };
 

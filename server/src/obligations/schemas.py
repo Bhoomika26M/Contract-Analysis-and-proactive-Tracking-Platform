@@ -7,6 +7,7 @@ class ObligationCreate(BaseModel):
     due_date: date
     contract_id: int
     assignee_id: Optional[int] = None
+    status: str
 
 # Used for Kanban board drag-and-drop
 class ObligationUpdateStatus(BaseModel):

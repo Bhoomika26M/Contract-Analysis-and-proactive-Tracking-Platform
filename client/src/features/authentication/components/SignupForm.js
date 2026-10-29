@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { registerUser } from '../services/register';
 import { useNavigate, Link } from 'react-router-dom';
-import { cardStyle, primaryButtonStyle } from '../../../uiStyles';
+import AuthLayout from './AuthLayout';
 
 const SignupForm = () => {
   const [formData, setFormData] = useState({
@@ -9,7 +9,8 @@ const SignupForm = () => {
     last_name: '',
     email: '',
     password: '',
-    role: 'Employee'
+    role: 'Employee',
+    department: 'IT'
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -33,47 +34,60 @@ const SignupForm = () => {
   };
 
   return (
-    <div style={{ ...cardStyle, maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-      <h2>Create an Account</h2>
-      
-      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
-      
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>First Name</label>
-          <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Last Name</label>
-          <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Email</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Password</label>
-          <input type="password" name="password" value={formData.password} onChange={handleChange} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Role</label>
-          <select name="role" value={formData.role} onChange={handleChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}>
-            <option value="Administrator">Administrator</option>
-            <option value="Legal Manager">Legal Manager</option>
-            <option value="Compliance Officer">Compliance Officer</option>
-            <option value="Contract Manager">Contract Manager</option>
-            <option value="Department Head">Department Head</option>
-            <option value="Employee">Employee</option>
-          </select>
-        </div>
-        <button type="submit" style={{ ...primaryButtonStyle, width: '100%', padding: '10px', marginBottom: '10px' }}>
-          Sign Up
-        </button>
-        <div style={{ textAlign: 'center' }}>
-          <Link to="/login" style={{ fontSize: '14px', color: '#4b2bf2' }}>Already have an account? Log in</Link>
-        </div>
-      </form>
-    </div>
+    <AuthLayout>
+        <h2 style={{ margin: '0 0 24px', color: '#1e1e2d', fontSize: '21px' }}>
+          Create your account
+        </h2>
+
+        {error && <p role="alert" style={{ color: '#b42318', fontWeight: 600 }}>{error}</p>}
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="signup-first-name" style={{ display: 'block', marginBottom: '7px', color: '#1e1e2d', fontWeight: 600 }}>First Name</label>
+            <input id="signup-first-name" type="text" name="first_name" value={formData.first_name} onChange={handleChange} required style={{ border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="signup-last-name" style={{ display: 'block', marginBottom: '7px', color: '#1e1e2d', fontWeight: 600 }}>Last Name</label>
+            <input id="signup-last-name" type="text" name="last_name" value={formData.last_name} onChange={handleChange} required style={{ border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="signup-email" style={{ display: 'block', marginBottom: '7px', color: '#1e1e2d', fontWeight: 600 }}>Email</label>
+            <input id="signup-email" type="email" name="email" autoComplete="email" value={formData.email} onChange={handleChange} required style={{ border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="signup-password" style={{ display: 'block', marginBottom: '7px', color: '#1e1e2d', fontWeight: 600 }}>Password</label>
+            <input id="signup-password" type="password" name="password" autoComplete="new-password" value={formData.password} onChange={handleChange} required style={{ border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="signup-role" style={{ display: 'block', marginBottom: '7px', color: '#1e1e2d', fontWeight: 600 }}>Role</label>
+            <select id="signup-role" name="role" value={formData.role} onChange={handleChange} style={{ border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box', backgroundColor: '#ffffff' }}>
+              <option value="Administrator">Administrator</option>
+              <option value="Legal Manager">Legal Manager</option>
+              <option value="Compliance Officer">Compliance Officer</option>
+              <option value="Contract Manager">Contract Manager</option>
+              <option value="Department Head">Department Head</option>
+              <option value="Employee">Employee</option>
+            </select>
+          </div>
+          <div style={{ marginBottom: '24px' }}>
+            <label htmlFor="signup-department" style={{ display: 'block', marginBottom: '7px', color: '#1e1e2d', fontWeight: 600 }}>Department</label>
+            <select id="signup-department" name="department" value={formData.department} onChange={handleChange} style={{ border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', width: '100%', boxSizing: 'border-box', backgroundColor: '#ffffff' }}>
+              <option value="Global">Global (Admin/Legal/Compliance)</option>
+              <option value="IT">IT</option>
+              <option value="HR">HR</option>
+              <option value="Operations">Operations</option>
+            </select>
+          </div>
+          <button className="auth-submit-button" type="submit" style={{ width: '100%', backgroundColor: '#3a1bb1', color: 'white', fontWeight: '600', padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', marginBottom: '16px' }}>
+            Sign Up
+          </button>
+          <div style={{ textAlign: 'center' }}>
+            <Link to="/login" style={{ fontSize: '14px', color: '#3a1bb1', textDecoration: 'none' }}>
+              Already have an account? Log in
+            </Link>
+          </div>
+        </form>
+    </AuthLayout>
   );
 };
 

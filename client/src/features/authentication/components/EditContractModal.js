@@ -1,52 +1,60 @@
 import React, { useEffect, useState } from 'react';
-import { getContract, updateContract } from '../services/contractsApi';
-import { cardStyle, primaryButtonStyle, secondaryButtonStyle } from '../../../uiStyles';
+import axios from 'axios';
+import { API_URL } from '../services/contractsApi';
+import { primaryButtonStyle, secondaryButtonStyle } from '../../../uiStyles';
 
-const emptyForm = {
-  status: 'Draft',
-  execution_date: '',
-  expiration_date: '',
-  category: '',
-  risk_level: ''
+const categories = [
+  'Technology',
+  'Services',
+  'Consulting',
+  'Licensing',
+  'Non-Disclosure Agreement',
+  'Other'
+];
+
+const getFormData = (contract) => ({
+  title: contract.title || '',
+  category: contract.category || '',
+  risk_level: contract.risk_level || '',
+  expiration_date: typeof contract.expiration_date === 'string'
+    ? contract.expiration_date.slice(0, 10)
+    : ''
+});
+
+const labelStyle = {
+  display: 'block',
+  marginBottom: '6px',
+  color: '#6c757d',
+  fontSize: '12px'
 };
 
-const EditContractModal = ({ contractId, onClose, onUpdated }) => {
-  const [formData, setFormData] = useState(emptyForm);
-  const [loading, setLoading] = useState(true);
-  const [loaded, setLoaded] = useState(false);
+const inputStyle = {
+  display: 'block',
+  width: '100%',
+  boxSizing: 'border-box',
+  border: '1px solid #dee2e6',
+  borderRadius: '4px',
+  padding: '10px'
+};
+
+const EditContractModal = ({ isOpen, onClose, contract, onSave }) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    category: '',
+    risk_level: '',
+    expiration_date: ''
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    let active = true;
+    if (isOpen && contract) {
+      setFormData(getFormData(contract));
+      setError('');
+    }
+  }, [isOpen, contract]);
 
-    const fetchContract = async () => {
-      try {
-        const contract = await getContract(contractId);
-        if (active) {
-          setFormData({
-            status: contract.status || 'Draft',
-            execution_date: contract.execution_date || '',
-            expiration_date: contract.expiration_date || '',
-            category: contract.category || '',
-            risk_level: contract.risk_level || ''
-          });
-          setLoaded(true);
-          setError('');
-        }
-      } catch (err) {
-        console.error(err);
-        if (active) setError('Failed to load contract details.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    fetchContract();
-    return () => {
-      active = false;
-    };
-  }, [contractId]);
+  if (!isOpen || !contract) return null;
 
   const handleChange = (event) => {
     setFormData({ ...formData, [event.target.name]: event.target.value });
@@ -58,21 +66,34 @@ const EditContractModal = ({ contractId, onClose, onUpdated }) => {
     setError('');
 
     try {
-      await updateContract(contractId, {
+      await axios.patch(`${API_URL}/${contract.id}`, {
         ...formData,
-        execution_date: formData.execution_date || null,
-        expiration_date: formData.expiration_date || null,
         category: formData.category || null,
-        risk_level: formData.risk_level || null
+        risk_level: formData.risk_level || null,
+        expiration_date: formData.expiration_date || null
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
       });
-      onUpdated();
+      await onSave();
+      onClose();
     } catch (err) {
       console.error(err);
-      setError('Failed to update contract. Please try again.');
+      const detail = err.response && err.response.data && err.response.data.detail;
+      setError(
+        typeof detail === 'string'
+          ? detail
+          : err.message || 'Failed to update contract. Please try again.'
+      );
     } finally {
       setSaving(false);
     }
   };
+
+  const categoryOptions = contract.category && !categories.includes(contract.category)
+    ? [contract.category, ...categories]
+    : categories;
 
   return (
     <div
@@ -87,8 +108,8 @@ const EditContractModal = ({ contractId, onClose, onUpdated }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
-        backgroundColor: 'rgba(0, 0, 0, 0.45)'
+        padding: '16px',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}
     >
       <section
@@ -96,99 +117,106 @@ const EditContractModal = ({ contractId, onClose, onUpdated }) => {
         aria-modal="true"
         aria-labelledby="edit-contract-title"
         style={{
-          width: '100%',
-          maxWidth: '520px',
+          width: '400px',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           padding: '24px',
-          ...cardStyle,
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+          backgroundColor: '#ffffff',
+          borderRadius: '8px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)'
         }}
       >
-        <h2 id="edit-contract-title" style={{ marginTop: 0 }}>Edit Contract</h2>
+        <h2
+          id="edit-contract-title"
+          style={{ margin: '0 0 20px', color: '#1e1e2d', fontWeight: 600 }}
+        >
+          Edit Contract
+        </h2>
         {error && <p role="alert" style={{ color: '#b02a37' }}>{error}</p>}
 
-        {loading ? (
-          <p>Loading contract details...</p>
-        ) : !loaded ? (
-          <div>
-            <button type="button" onClick={onClose} style={{ ...secondaryButtonStyle, padding: '9px 14px' }}>Close</button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <label>
-                Status
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  required
-                  style={{ display: 'block', width: '100%', marginTop: '6px', padding: '8px', boxSizing: 'border-box' }}
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="Active">Active</option>
-                  <option value="Expired">Expired</option>
-                </select>
-              </label>
-              <label>
-                Category
-                <input
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  placeholder="e.g. Technology"
-                  style={{ display: 'block', width: '100%', marginTop: '6px', padding: '8px', boxSizing: 'border-box' }}
-                />
-              </label>
-              <label>
-                Execution Date
-                <input
-                  type="date"
-                  name="execution_date"
-                  value={formData.execution_date}
-                  onChange={handleChange}
-                  style={{ display: 'block', width: '100%', marginTop: '6px', padding: '8px', boxSizing: 'border-box' }}
-                />
-              </label>
-              <label>
-                Expiration Date
-                <input
-                  type="date"
-                  name="expiration_date"
-                  value={formData.expiration_date}
-                  onChange={handleChange}
-                  style={{ display: 'block', width: '100%', marginTop: '6px', padding: '8px', boxSizing: 'border-box' }}
-                />
-              </label>
-              <label style={{ gridColumn: '1 / -1' }}>
-                Risk Level
-                <select
-                  name="risk_level"
-                  value={formData.risk_level}
-                  onChange={handleChange}
-                  style={{ display: 'block', width: '100%', marginTop: '6px', padding: '8px', boxSizing: 'border-box' }}
-                >
-                  <option value="">Not specified</option>
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </label>
-            </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gap: '16px' }}>
+            <label>
+              <span style={labelStyle}>Contract Title</span>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                style={inputStyle}
+              />
+            </label>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
-              <button type="button" onClick={onClose} disabled={saving} style={{ ...secondaryButtonStyle, padding: '9px 14px' }}>
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                style={{ ...primaryButtonStyle, padding: '9px 14px', cursor: saving ? 'wait' : 'pointer' }}
+            <label>
+              <span style={labelStyle}>Category</span>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                style={inputStyle}
               >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        )}
+                <option value="">Select a category</option>
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span style={labelStyle}>Risk Level</span>
+              <select
+                name="risk_level"
+                value={formData.risk_level}
+                onChange={handleChange}
+                style={inputStyle}
+              >
+                <option value="">Select a risk level</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </label>
+
+            <label>
+              <span style={labelStyle}>Expiration Date</span>
+              <input
+                type="date"
+                name="expiration_date"
+                value={formData.expiration_date}
+                onChange={handleChange}
+                style={inputStyle}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              style={{
+                ...secondaryButtonStyle,
+                backgroundColor: '#f8f9fa',
+                border: 'none',
+                padding: '10px 16px'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                ...primaryButtonStyle,
+                padding: '10px 16px',
+                cursor: saving ? 'wait' : 'pointer'
+              }}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       </section>
     </div>
   );

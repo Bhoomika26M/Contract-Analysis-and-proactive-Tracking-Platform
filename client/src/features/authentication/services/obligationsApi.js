@@ -6,6 +6,11 @@ const getAuthHeaders = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
 });
 
+export const getAllObligations = async () => {
+  const response = await axios.get(API_URL, getAuthHeaders());
+  return response.data;
+};
+
 export const getObligations = async (contractId) => {
   const response = await axios.get(`${API_URL}/contract/${contractId}`, getAuthHeaders());
   return response.data;

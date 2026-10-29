@@ -63,11 +63,6 @@ def update_status(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    require_roles(
-        current_user,
-        {"Administrator", "Contract Manager"},
-        "Editing obligations"
-    )
     return service.update_obligation_status(
         db=db,
         obligation_id=obligation_id,

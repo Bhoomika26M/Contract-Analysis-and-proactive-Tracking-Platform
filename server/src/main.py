@@ -6,6 +6,9 @@ from src.auth.controller import router as auth_router
 import src.contracts.models
 from src.contracts.controller import router as contracts_router
 from src.obligations.controller import router as obligations_router
+from src.users.controller import router as users_router
+import src.audit.models
+from src.audit.controller import router as audit_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +26,8 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(contracts_router)
+app.include_router(users_router)
+app.include_router(audit_router)
 
 @app.get("/")
 def read_root():

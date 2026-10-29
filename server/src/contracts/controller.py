@@ -5,6 +5,7 @@ from src.database.core import get_db
 from src.auth.dependencies import get_current_user
 from src.auth.models import User
 from src.contracts import service, schemas
+from src.audit.service import create_audit_log
 
 router = APIRouter(prefix="/api/contracts", tags=["Contracts"])
 
@@ -28,12 +29,19 @@ def create_new_contract(
         {"Administrator", "Contract Manager", "Department Head"},
         "Creating contracts"
     )
-    return service.create_contract(
+    created_contract = service.create_contract(
         db=db,
         contract=contract,
-        user_id=current_user.id,
-        department=current_user.department
+        user_id=current_user.id
     )
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="CREATED",
+        target_resource="Contract",
+        target_id=created_contract.id
+    )
+    return created_contract
 
 @router.get("/", response_model=List[schemas.ContractResponse])
 def read_user_contracts(
@@ -120,6 +128,36 @@ def read_contract(
     return contract
 
 
+@router.patch("/{contract_id}/status", response_model=schemas.ContractResponse)
+def update_contract_status(
+    contract_id: int,
+    status_update: schemas.ContractStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role not in {"Administrator", "Legal Manager"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to approve contracts"
+        )
+
+    contract = service.update_contract_status(
+        db=db,
+        contract_id=contract_id,
+        new_status=status_update.status
+    )
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="REJECTED" if status_update.status.casefold() == "rejected" else "APPROVED",
+        target_resource="Contract",
+        target_id=contract.id
+    )
+    return contract
+
+
 @router.patch("/{contract_id}", response_model=schemas.ContractResponse)
 def update_contract(
     contract_id: int,
@@ -140,4 +178,41 @@ def update_contract(
     )
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="EDITED",
+        target_resource="Contract",
+        target_id=contract.id
+    )
+    return contract
+
+
+@router.patch("/{contract_id}/renew", response_model=schemas.ContractResponse)
+def renew_contract(
+    contract_id: int,
+    renewal: schemas.ContractRenewalRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    require_roles(
+        current_user,
+        {"Administrator", "Contract Manager", "Department Head"},
+        "Renewing contracts"
+    )
+    contract = service.renew_contract(
+        db=db,
+        contract_id=contract_id,
+        expiration_date=renewal.expiration_date,
+        current_user=current_user
+    )
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="RENEWED",
+        target_resource="Contract",
+        target_id=contract.id
+    )
     return contract

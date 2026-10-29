@@ -75,14 +75,26 @@ def update_obligation_status(
     status_update: ObligationUpdateStatus,
     current_user: User
 ):
-    obligation = apply_contract_visibility(
-        db.query(Obligation).join(Contract),
-        current_user
-    ).filter(Obligation.id == obligation_id).first()
-    
+    obligation = db.query(Obligation).filter(
+        Obligation.id == obligation_id
+    ).first()
     if not obligation:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Obligation not found or access denied")
-        
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Obligation not found"
+        )
+
+    privileged_roles = {"Administrator", "Contract Manager", "Department Head"}
+    is_assigned_employee = (
+        current_user.role == "Employee"
+        and obligation.assignee_id == current_user.id
+    )
+    if current_user.role not in privileged_roles and not is_assigned_employee:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this task"
+        )
+
     obligation.status = status_update.status
     db.commit()
     db.refresh(obligation)

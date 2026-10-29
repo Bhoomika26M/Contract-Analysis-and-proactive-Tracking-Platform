@@ -15,7 +15,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         last_name=user.last_name,
         email=user.email,
         password=user.password,
-        role=user.role or "Employee"
+        role=user.role or "Employee",
+        department=user.department
     )
     return {"message": "User registered successfully", "email": new_user.email}
 
@@ -41,5 +42,8 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         "access_token": access_token, 
         "token_type": "bearer",
         "user_email": user.email,
-        "role": user.role
+        "user_name": f"{user.first_name} {user.last_name}".strip(),
+        "role": user.role,
+        "user_id": user.id,
+        "department": user.department
     }

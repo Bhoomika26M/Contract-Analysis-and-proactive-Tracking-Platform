@@ -10,6 +10,7 @@ class ContractCreate(BaseModel):
     expiration_date: Optional[date] = None
     category: Optional[str] = None
     risk_level: Optional[str] = None
+    department: str
 
 
 class ContractUpdate(BaseModel):
@@ -19,6 +20,14 @@ class ContractUpdate(BaseModel):
     expiration_date: Optional[date] = None
     category: Optional[str] = None
     risk_level: Optional[str] = None
+
+
+class ContractStatusUpdate(BaseModel):
+    status: str
+
+
+class ContractRenewalRequest(BaseModel):
+    expiration_date: date
 
 
 # What the backend sends back to the React frontend

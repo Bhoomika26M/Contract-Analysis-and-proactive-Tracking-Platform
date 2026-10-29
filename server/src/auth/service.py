@@ -1,6 +1,7 @@
 from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from sqlalchemy.orm import Session
 from src.auth.models import User
 
@@ -25,7 +26,8 @@ def create_user(
     last_name: str,
     email: str,
     password: str,
-    role: str = "Employee"
+    role: str = "Employee",
+    department: Optional[str] = None
 ):
     hashed_password = get_password_hash(password)
     db_user = User(
@@ -33,7 +35,8 @@ def create_user(
         last_name=last_name, 
         email=email, 
         hashed_password=hashed_password, 
-        role=role
+        role=role,
+        department=department
     )
     db.add(db_user)
     db.commit()

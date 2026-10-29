@@ -6,13 +6,12 @@ import { cardStyle, getStatusBadgeStyle, primaryButtonStyle, tableHeaderCellStyl
 const ContractList = ({ refreshKey, onContractUpdated }) => {
   const [contracts, setContracts] = useState([]);
   const [error, setError] = useState('');
-  const [editingContractId, setEditingContractId] = useState(null);
+  const [editingContract, setEditingContract] = useState(null);
   const canEditContracts = ['Administrator', 'Contract Manager'].includes(
     localStorage.getItem('userRole')
   );
 
   const handleContractUpdated = () => {
-    setEditingContractId(null);
     if (onContractUpdated) onContractUpdated();
   };
 
@@ -65,7 +64,7 @@ const ContractList = ({ refreshKey, onContractUpdated }) => {
                 <td style={{ padding: '12px' }}>
                   <button
                     type="button"
-                    onClick={() => setEditingContractId(contract.id)}
+                    onClick={() => setEditingContract(contract)}
                     style={{ ...primaryButtonStyle, padding: '7px 12px' }}
                   >
                     Edit
@@ -80,11 +79,12 @@ const ContractList = ({ refreshKey, onContractUpdated }) => {
       {contracts.length === 0 && !error && (
         <p style={{ textAlign: 'center', marginTop: '20px', color: '#6c757d' }}>No contracts found.</p>
       )}
-      {editingContractId !== null && (
+      {editingContract && (
         <EditContractModal
-          contractId={editingContractId}
-          onClose={() => setEditingContractId(null)}
-          onUpdated={handleContractUpdated}
+          isOpen={Boolean(editingContract)}
+          contract={editingContract}
+          onClose={() => setEditingContract(null)}
+          onSave={handleContractUpdated}
         />
       )}
     </div>

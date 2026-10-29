@@ -15,6 +15,7 @@ import Notifications from './pages/Notifications';
 import Renewals from './pages/Renewals';
 import Compliance from './pages/Compliance';
 import Reports from './pages/Reports';
+import UserManagement from './pages/UserManagement';
 
 function App() {
   return (
@@ -48,10 +49,7 @@ function App() {
               path="/users"
               element={
                 <ProtectedRoute allowedRoles={['Administrator']}>
-                  <div>
-                    <h1>User Management</h1>
-                    <p>This page is not available yet.</p>
-                  </div>
+                  <UserManagement />
                 </ProtectedRoute>
               }
             />
@@ -66,7 +64,7 @@ function App() {
             <Route
               path="/settings"
               element={
-                <ProtectedRoute allowedRoles={['Administrator', 'Legal Manager']}>
+                <ProtectedRoute>
                   <Settings />
                 </ProtectedRoute>
               }

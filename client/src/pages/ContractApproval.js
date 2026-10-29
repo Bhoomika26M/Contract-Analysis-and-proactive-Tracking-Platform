@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {
-  approveContract,
-  getPendingContracts,
-  rejectContract
-} from '../features/authentication/services/approvalsApi';
-import { cardStyle, getStatusBadgeStyle, tableHeaderCellStyle } from '../uiStyles';
+import axios from 'axios';
+import { API_URL } from '../features/authentication/services/contractsApi';
+import { cardStyle, tableHeaderCellStyle } from '../uiStyles';
 
 const ContractApproval = () => {
   const [contracts, setContracts] = useState([]);
@@ -16,13 +13,21 @@ const ContractApproval = () => {
   );
 
   useEffect(() => {
-    let active = true;
+    if (!canDecide) {
+      setLoading(false);
+      return undefined;
+    }
 
-    const loadPendingContracts = async () => {
+    let active = true;
+    const loadContracts = async () => {
       try {
-        const data = await getPendingContracts();
+        const response = await axios.get(API_URL, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
         if (active) {
-          setContracts(data);
+          setContracts(response.data.filter((contract) => contract.status === 'Pending'));
           setError('');
         }
       } catch (err) {
@@ -33,34 +38,57 @@ const ContractApproval = () => {
       }
     };
 
-    loadPendingContracts();
+    loadContracts();
     return () => {
       active = false;
     };
-  }, []);
+  }, [canDecide]);
 
-  const handleDecision = async (contractId, decision) => {
+  const handleDecision = async (contractId, newStatus) => {
     setWorkingId(contractId);
     setError('');
 
     try {
-      if (decision === 'approve') {
-        await approveContract(contractId);
-      } else {
-        await rejectContract(contractId);
-      }
+      await axios.patch(
+        `${API_URL}/${contractId}/status`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
       setContracts((current) => current.filter((contract) => contract.id !== contractId));
     } catch (err) {
       console.error(err);
-      setError(`Failed to ${decision} contract. It may have already been reviewed.`);
+      setError(`Failed to update contract status to ${newStatus}. Please try again.`);
     } finally {
       setWorkingId(null);
     }
   };
 
+  if (!canDecide) {
+    return (
+      <div
+        style={{
+          minHeight: '60vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#6c757d',
+          textAlign: 'center'
+        }}
+      >
+        You do not have permission to view this page.
+      </div>
+    );
+  }
+
   return (
     <section style={{ ...cardStyle, padding: '24px' }}>
-      <h1 style={{ marginTop: 0 }}>Contract Approvals</h1>
+      <h1 style={{ marginTop: 0, color: '#1e1e2d', fontWeight: 600 }}>
+        Contract Approvals
+      </h1>
       <p style={{ color: '#6c757d' }}>Review contracts awaiting approval.</p>
 
       {error && <p role="alert" style={{ color: '#b02a37' }}>{error}</p>}
@@ -71,16 +99,7 @@ const ContractApproval = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-                {[
-                  'ID',
-                  'Title',
-                  'Category',
-                  'Status',
-                  'Risk',
-                  'Execution Date',
-                  'Expiration Date',
-                  ...(canDecide ? ['Actions'] : [])
-                ].map((heading) => (
+                {['Title', 'Category', 'Risk Level', 'Expiration Date', 'Actions'].map((heading) => (
                   <th key={heading} style={tableHeaderCellStyle}>{heading}</th>
                 ))}
               </tr>
@@ -88,35 +107,43 @@ const ContractApproval = () => {
             <tbody>
               {contracts.map((contract) => (
                 <tr key={contract.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                  <td style={{ padding: '12px' }}>{contract.id}</td>
                   <td style={{ padding: '12px', fontWeight: 500 }}>{contract.title}</td>
                   <td style={{ padding: '12px' }}>{contract.category || '—'}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={getStatusBadgeStyle(contract.status)}>{contract.status}</span>
-                  </td>
                   <td style={{ padding: '12px' }}>{contract.risk_level || '—'}</td>
-                  <td style={{ padding: '12px' }}>{contract.execution_date || 'TBD'}</td>
                   <td style={{ padding: '12px' }}>{contract.expiration_date || 'TBD'}</td>
-                  {canDecide && (
-                    <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDecision(contract.id, 'approve')}
-                        disabled={workingId !== null}
-                        style={{ marginRight: '8px', padding: '7px 11px', border: '1px solid #0bb783', borderRadius: '6px', backgroundColor: '#e8fff3', color: '#0bb783', cursor: 'pointer' }}
-                      >
-                        {workingId === contract.id ? 'Saving...' : 'Approve'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDecision(contract.id, 'reject')}
-                        disabled={workingId !== null}
-                        style={{ padding: '7px 11px', border: '1px solid #f1416c', borderRadius: '6px', backgroundColor: '#ffebf0', color: '#f1416c', cursor: 'pointer' }}
-                      >
-                        {workingId === contract.id ? 'Saving...' : 'Reject'}
-                      </button>
-                    </td>
-                  )}
+                  <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDecision(contract.id, 'Active')}
+                      disabled={workingId !== null}
+                      style={{
+                        backgroundColor: '#e8fff3',
+                        color: '#0bb783',
+                        border: '1px solid #0bb783',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        marginRight: '8px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {workingId === contract.id ? 'Saving...' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDecision(contract.id, 'Rejected')}
+                      disabled={workingId !== null}
+                      style={{
+                        backgroundColor: '#ffebf0',
+                        color: '#f1416c',
+                        border: '1px solid #f1416c',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {workingId === contract.id ? 'Saving...' : 'Reject'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
