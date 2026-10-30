@@ -234,6 +234,16 @@ class AuditLogOut(BaseModel):
         from_attributes = True
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6)
+    confirm_password: Optional[str] = None
+
+
 class SettingOut(BaseModel):
     key: str
     value: str
