@@ -56,24 +56,33 @@ const canAccess = (role: Role, page: PageId) => ROLE_PAGES[role].has(page)
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
-  const [currentPage, setCurrentPage] = useState<PageId>('login')
+  const [currentPage, setCurrentPage] = useState<PageId>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('reset_token')) return 'forgot-password'
+      if (sessionStorage.getItem('reset_token')) return 'forgot-password'
+    } catch {}
+    return 'login'
+  })
   const [notificationsCount, setNotificationsCount] = useState(0)
   const [selectedRole, setSelectedRole] = useState<Role>('administrator')
   const [currentUserData, setCurrentUserData] = useState<any>(null)
-  const [initialResetToken, setInitialResetToken] = useState('')
+  const [initialResetToken, setInitialResetToken] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const rt = params.get('reset_token')
+      if (rt) {
+        try { sessionStorage.setItem('reset_token', rt) } catch {}
+        return rt
+      }
+      return sessionStorage.getItem('reset_token') || ''
+    } catch {
+      return ''
+    }
+  })
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const rt = params.get('reset_token')
-    if (rt) {
-      setInitialResetToken(rt)
-      setToken(null)
-      setIsAuthenticated(false)
-      setOnboardingComplete(false)
-      setCurrentPage('forgot-password')
-      window.history.replaceState({}, '', window.location.pathname)
-      return
-    }
     const t = params.get('token')
     if (t) {
       setToken(t)
@@ -107,6 +116,7 @@ export default function App() {
   }
 
   const handleLogin = async (email: string, password: string, role: Role) => {
+    try { sessionStorage.removeItem('reset_token') } catch {}
     const res = await authApi.login(email, password)
     if (res.user?.role !== role) {
       throw new Error('Role not permitted for this account')

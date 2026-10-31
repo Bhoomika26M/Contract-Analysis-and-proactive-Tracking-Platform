@@ -62,7 +62,6 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
     const rt = params.get('reset_token')
     if (rt) {
       setResetToken(rt)
-      window.history.replaceState({}, '', window.location.pathname)
     }
   }, [initialResetToken])
 
@@ -76,6 +75,7 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
   const [selectedRole, setSelectedRole] = useState<Role>('administrator')
   const [forgotSent, setForgotSent] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [resetToken, setResetToken] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -140,19 +140,26 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
                   {error && <div className="text-sm text-red-600">{error}</div>}
                   <button
                     onClick={async () => {
+                      if (loading) return
                       setError(''); setLoading(true)
                       try {
                         const res = await fetch('/api/auth/forgot-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: forgotEmail}) })
                         const data = await res.json()
                         if (!res.ok) throw new Error(data.detail || 'Failed')
                         setForgotSent(true)
-                      } catch (e:any) { setError(e?.message || 'Failed') }
-                      finally { setLoading(false) }
+                        setToast({ msg: 'Email sent successfully! Please check your inbox for the password reset link.', type: 'success' })
+                        setTimeout(() => setToast(null), 4000)
+                      } catch (e:any) {
+                        const msg = e?.message || 'Failed to send reset email'
+                        setError(msg)
+                        setToast({ msg, type: 'error' })
+                        setTimeout(() => setToast(null), 4000)
+                      } finally { setLoading(false) }
                     }}
                     disabled={loading}
                     className="w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ background: P }}
                   >
-                    Send reset instructions
+                    {loading ? 'Sending...' : 'Send reset instructions'}
                   </button>
                 </div>
               </>
@@ -192,6 +199,7 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
                       const data = await res.json()
                       if (!res.ok) throw new Error(data.detail || 'Failed')
                       setResetDone(true)
+                      try { sessionStorage.removeItem('reset_token') } catch {}
                     } catch (e:any) { setError(e?.message || 'Failed') }
                     finally { setLoading(false) }
                   }}
@@ -210,6 +218,14 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
             )}
           </div>
         </div>
+      {toast && (
+        <div
+          className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto"
+          style={{ background: toast.type === 'success' ? P : '#DC2626', color: '#fff', minWidth: 240, maxWidth: 360 }}
+        >
+          <span>{toast.msg}</span>
+        </div>
+      )}
       </div>
     )
   }
