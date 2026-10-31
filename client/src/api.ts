@@ -39,6 +39,10 @@ export const authApi = {
   register: (payload: any) =>
     api<{ access_token: string; user: any }>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => api<any>('/api/auth/me'),
+  forgotPassword: (email: string) =>
+    api<{ message: string }>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, new_password: string, confirm_password?: string) =>
+    api<{ message: string }>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password, confirm_password }) }),
 }
 
 export const contractsApi = {
