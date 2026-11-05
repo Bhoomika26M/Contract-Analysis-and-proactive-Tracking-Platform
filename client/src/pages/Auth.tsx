@@ -57,14 +57,11 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
   useEffect(() => {
     if (initialResetToken) {
       setResetToken(initialResetToken)
-      setForgotSent(true)
     }
     const params = new URLSearchParams(window.location.search)
     const rt = params.get('reset_token')
     if (rt) {
       setResetToken(rt)
-      setForgotSent(true)
-      window.history.replaceState({}, '', window.location.pathname)
     }
   }, [initialResetToken])
 
@@ -78,8 +75,10 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
   const [selectedRole, setSelectedRole] = useState<Role>('administrator')
   const [forgotSent, setForgotSent] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [resetToken, setResetToken] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [resetDone, setResetDone] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -124,11 +123,11 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
             >
               <ChevronLeft size={16} />Back to login
             </button>
-                {!forgotSent && !resetDone ? (
+                {!resetDone && !resetToken && !forgotSent ? (
               <>
                 <div className="mb-8">
                   <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>Reset password</h1>
-                  <p style={{ color: '#6B7280' }}>Enter your email to receive a reset token.</p>
+                  <p style={{ color: '#6B7280' }}>Enter your email to receive a reset link.</p>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -141,42 +140,66 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
                   {error && <div className="text-sm text-red-600">{error}</div>}
                   <button
                     onClick={async () => {
+                      if (loading) return
                       setError(''); setLoading(true)
                       try {
                         const res = await fetch('/api/auth/forgot-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: forgotEmail}) })
                         const data = await res.json()
                         if (!res.ok) throw new Error(data.detail || 'Failed')
-                        setResetToken(data.reset_token || '')
                         setForgotSent(true)
-                      } catch (e:any) { setError(e?.message || 'Failed') }
-                      finally { setLoading(false) }
+                        setToast({ msg: 'Email sent successfully! Please check your inbox for the password reset link.', type: 'success' })
+                        setTimeout(() => setToast(null), 4000)
+                      } catch (e:any) {
+                        const msg = e?.message || 'Failed to send reset email'
+                        setError(msg)
+                        setToast({ msg, type: 'error' })
+                        setTimeout(() => setToast(null), 4000)
+                      } finally { setLoading(false) }
                     }}
                     disabled={loading}
                     className="w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ background: P }}
                   >
-                    Send reset instructions
+                    {loading ? 'Sending...' : 'Send reset instructions'}
                   </button>
                 </div>
               </>
             ) : resetDone ? (
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-2" style={{ color: '#1A1A1A' }}>Password updated</h2>
+                <p className="text-sm mb-6" style={{ color: '#6B7280' }}>Your password has been reset successfully. You can now log in.</p>
                 <button onClick={() => navigate('login')} className="px-6 py-3 rounded-xl text-white font-medium text-sm" style={{ background: P }}>Return to login</button>
               </div>
-            ) : (
+            ) : resetToken ? (
               <div className="space-y-4">
-                <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>Enter new password</h1>
-                <input type="text" value={resetToken} onChange={e=>setResetToken(e.target.value)} placeholder="Reset token" className={`${inputCls}`} style={inputStyle} />
-                <input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="New password" className={`${inputCls}`} style={inputStyle} />
+                <div className="mb-2">
+                  <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>Enter new password</h1>
+                  <p style={{ color: '#6B7280' }}>Choose a new password for your account.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: '#374151' }}>New password</label>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                    <input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="New password" className={`${inputCls} pl-10`} style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: '#374151' }}>Confirm password</label>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                    <input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Confirm password" className={`${inputCls} pl-10`} style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
+                  </div>
+                </div>
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 <button
                   onClick={async () => {
                     setError(''); setLoading(true)
                     try {
-                      const res = await fetch('/api/auth/reset-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token: resetToken, new_password: newPassword}) })
+                      if (newPassword !== confirmPassword) throw new Error('Passwords do not match')
+                      const res = await fetch('/api/auth/reset-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token: resetToken, new_password: newPassword, confirm_password: confirmPassword}) })
                       const data = await res.json()
                       if (!res.ok) throw new Error(data.detail || 'Failed')
                       setResetDone(true)
+                      try { sessionStorage.removeItem('reset_token') } catch {}
                     } catch (e:any) { setError(e?.message || 'Failed') }
                     finally { setLoading(false) }
                   }}
@@ -186,9 +209,23 @@ export function Auth({ currentPage, navigate, onLogin, onRegister, initialResetT
                   Reset password
                 </button>
               </div>
+            ) : (
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2" style={{ color: '#1A1A1A' }}>Check your email</h2>
+                <p className="text-sm mb-6" style={{ color: '#6B7280' }}>If an account exists for that email, a password reset link has been sent. Click the link to reset your password.</p>
+                <button onClick={() => navigate('login')} className="px-6 py-3 rounded-xl text-white font-medium text-sm" style={{ background: P }}>Return to login</button>
+              </div>
             )}
           </div>
         </div>
+      {toast && (
+        <div
+          className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto"
+          style={{ background: toast.type === 'success' ? P : '#DC2626', color: '#fff', minWidth: 240, maxWidth: 360 }}
+        >
+          <span>{toast.msg}</span>
+        </div>
+      )}
       </div>
     )
   }
