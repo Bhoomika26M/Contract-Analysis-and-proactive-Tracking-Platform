@@ -1,0 +1,67 @@
+body.dark-mode {
+  background-color: #151521;
+  color: #ffffff;
+}
+
+.dark-mode .app-main {
+  background-color: #151521 !important;
+  color: #ffffff;
+}
+
+.dark-mode .app-main main {
+  background-color: #151521 !important;
+  color: #ffffff;
+}
+
+.dark-mode .app-topbar,
+.dark-mode .app-sidebar {
+  background-color: #1e1e2d !important;
+  color: #ffffff !important;
+}
+
+.dark-mode .app-main main,
+.dark-mode .app-main section,
+.dark-mode .app-main [style*="box-shadow"],
+.dark-mode .app-profile-menu {
+  background-color: #1e1e2d !important;
+  border-color: #2b2b40 !important;
+  color: #ffffff !important;
+}
+
+.dark-mode .app-main [style*="background-color: rgb(255, 255, 255)"],
+.dark-mode .app-main [style*="background-color: #ffffff"] {
+  background-color: #1e1e2d !important;
+}
+
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode p:not([role="alert"]):not([role="status"]),
+.dark-mode label,
+.dark-mode .app-profile-menu button {
+  color: #ffffff !important;
+}
+
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+  background-color: #151521 !important;
+  color: #ffffff !important;
+  border: 1px solid #2b2b40 !important;
+}
+
+.dark-mode table,
+.dark-mode th,
+.dark-mode td {
+  background-color: #1e1e2d !important;
+  color: #ffffff !important;
+  border-color: #2b2b40 !important;
+}
+
+.dark-mode .app-profile-menu > div:first-child {
+  background-color: #29283a !important;
+}
+
+.dark-mode .app-profile-menu button[role="menuitem"]:last-child {
+  color: #f1416c !important;
+}

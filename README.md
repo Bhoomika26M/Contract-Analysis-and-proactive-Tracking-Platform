@@ -1,1 +1,1 @@
-# Contract-Analysis-and-proactive-Tracking-Platform
+# ContractIQ
