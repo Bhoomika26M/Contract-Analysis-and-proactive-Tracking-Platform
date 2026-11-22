@@ -5,7 +5,6 @@ import { Search, Download, Shield, FileText, Settings, Eye, CheckCircle2, AlertT
 import { useTheme } from '../context/ThemeContext'
 import { ExportModal } from '../components/ExportModal'
 
-const TOTAL_RECORDS = 0
 const PAGE_SIZE = 20
 
 export function AuditLogs({ navigate }: PageProps) {
@@ -59,9 +58,9 @@ export function AuditLogs({ navigate }: PageProps) {
       l.resource.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const totalPages = Math.ceil(TOTAL_RECORDS / PAGE_SIZE)
-  const startRecord = (page - 1) * PAGE_SIZE + 1
-  const endRecord = Math.min(page * PAGE_SIZE, TOTAL_RECORDS)
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const startRecord = filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const endRecord = Math.min(page * PAGE_SIZE, filtered.length)
 
   return (
     <div className="p-6 space-y-6">
@@ -91,10 +90,10 @@ export function AuditLogs({ navigate }: PageProps) {
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total Events', value: '247', sub: 'Today', color: t.info, bg: t.infoBg },
-          { label: 'User Actions', value: '189', sub: '14 users', color: t.primary, bg: t.primaryBg },
-          { label: 'Security Events', value: '12', sub: '1 warning', color: t.warning, bg: t.warningBg },
-          { label: 'System Events', value: '46', sub: 'Automated', color: t.muted, bg: t.bg },
+          { label: 'Total Events', value: String(logs.length), sub: 'All', color: t.info, bg: t.infoBg },
+          { label: 'User Actions', value: String(logs.filter((l: any) => l.user && l.user !== 'System').length), sub: 'users', color: t.primary, bg: t.primaryBg },
+          { label: 'Security Events', value: String(logs.filter((l: any) => l.category === 'security').length), sub: 'security', color: t.warning, bg: t.warningBg },
+          { label: 'System Events', value: String(logs.filter((l: any) => l.user === 'System').length), sub: 'automated', color: t.muted, bg: t.bg },
         ].map(s => (
           <div key={s.label} className="rounded-2xl border p-4" style={{ borderColor: t.border, background: t.surface }}>
             <div className="text-2xl font-bold mb-0.5" style={{ color: s.color }}>{s.value}</div>
@@ -237,7 +236,7 @@ export function AuditLogs({ navigate }: PageProps) {
       {/* Pagination */}
       <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: t.border }}>
         <span className="text-sm" style={{ color: t.muted }}>
-          {startRecord}–{endRecord} of {TOTAL_RECORDS} results
+          {startRecord}–{endRecord} of {filtered.length} results
         </span>
         <div className="flex items-center gap-2">
           <button

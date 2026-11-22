@@ -110,7 +110,13 @@ class ContractOut(ContractBase):
     id: int
     file_path: Optional[str] = ""
     extracted_text: Optional[str] = ""
+    documents: Optional[List["ContractDocumentOut"]] = []
     created_by: Optional[int] = None
+    approved_by: Optional[int] = None
+    approved_by_name: Optional[str] = ""
+    approved_by_role: Optional[str] = ""
+    approved_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -250,3 +256,18 @@ class SettingOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ContractDocumentOut(BaseModel):
+    id: int
+    contract_id: int
+    file_name: Optional[str] = ""
+    file_path: Optional[str] = ""
+    file_size: Optional[int] = 0
+    status: Optional[str] = "uploaded"
+    extracted_text: Optional[str] = ""
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+ContractOut.model_rebuild()

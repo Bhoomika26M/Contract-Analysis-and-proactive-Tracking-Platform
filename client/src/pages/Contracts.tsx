@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useEffect } from 'react'
-import { contractsApi } from '../api'
+import { contractsApi, authApi } from '../api'
 import { ExportModal } from '../components/ExportModal'
 
 interface ContractsProps extends PageProps {
@@ -20,11 +20,18 @@ const canEdit = (role: Role) => role === 'administrator' || role === 'contract-m
 const canApprove = (role: Role) => role === 'administrator' || role === 'legal-manager'
 const canCreate = (role: Role) => role === 'administrator' || role === 'contract-manager'
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: '\u20b9', USD: '$', EUR: '\u20ac', GBP: '\u00a3', AED: 'AED', CAD: 'C$', AUD: 'A$', SGD: 'S$', JPY: '\u00a5', Other: '',
+}
+export function currencySymbol(code?: string) {
+  return CURRENCY_SYMBOLS[code || 'USD'] ?? (code || '$')
+}
+
 const detailTabs = ['Overview', 'Documents', 'Versions', 'Obligations', 'Renewals', 'Compliance', 'History']
 
 function UploadView({ navigate }: PageProps & { role: Role }) {
   const { theme: t } = useTheme()
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -40,17 +47,20 @@ function UploadView({ navigate }: PageProps & { role: Role }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setError(''); setSuccess('')
     if (!form.title) { setError('Contract title is required'); return }
     setSaving(true)
     try {
       const payload = { ...form, value: form.value ? Number(form.value) : 0 }
-      if (file) {
-        await contractsApi.upload(file, payload)
+      const selectedFiles = files
+      if (selectedFiles.length) {
+        await contractsApi.upload(selectedFiles, payload)
       } else {
         await contractsApi.create(payload)
       }
       setSuccess('Contract saved successfully')
+      try { window.dispatchEvent(new Event('contractiq:refresh-dashboard')) } catch {}
       setTimeout(() => navigate('contracts'), 800)
     } catch (err: any) {
       setError(err?.message || 'Failed to save contract')
@@ -85,11 +95,17 @@ function UploadView({ navigate }: PageProps & { role: Role }) {
             </div>
             <div>
               <label className={labelCls} style={{ color: t.fgSecondary }}>Contract Type</label>
-              <input className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.contract_type} onChange={e => set('contract_type', e.target.value)} />
+              <select className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.contract_type} onChange={e => set('contract_type', e.target.value)}>
+                <option value="">Select Contract Type</option>
+                {['Software', 'IT Services', 'Cloud', 'Legal', 'HR Tech', 'Communications'].map(ct => <option key={ct} value={ct}>{ct}</option>)}
+              </select>
             </div>
             <div>
               <label className={labelCls} style={{ color: t.fgSecondary }}>Department</label>
-              <input className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.department} onChange={e => set('department', e.target.value)} />
+              <select className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.department} onChange={e => set('department', e.target.value)}>
+                <option value="">Select Department</option>
+                {['Technology', 'Legal', 'Finance', 'Sales', 'Human Resources', 'Marketing', 'Operations'].map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
             </div>
             <div>
               <label className={labelCls} style={{ color: t.fgSecondary }}>Contract Owner</label>
@@ -141,7 +157,18 @@ function UploadView({ navigate }: PageProps & { role: Role }) {
             </div>
             <div>
               <label className={labelCls} style={{ color: t.fgSecondary }}>Currency</label>
-              <input className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.currency} onChange={e => set('currency', e.target.value)} />
+              <select className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.currency} onChange={e => set('currency', e.target.value)}>
+                <option value="INR">INR – Indian Rupee (₹)</option>
+                <option value="USD">USD – US Dollar ($)</option>
+                <option value="EUR">EUR – Euro (€)</option>
+                <option value="GBP">GBP – British Pound (£)</option>
+                <option value="AED">AED – UAE Dirham</option>
+                <option value="CAD">CAD – Canadian Dollar</option>
+                <option value="AUD">AUD – Australian Dollar</option>
+                <option value="SGD">SGD – Singapore Dollar</option>
+                <option value="JPY">JPY – Japanese Yen</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
             <div>
               <label className={labelCls} style={{ color: t.fgSecondary }}>Payment Terms</label>
@@ -149,7 +176,18 @@ function UploadView({ navigate }: PageProps & { role: Role }) {
             </div>
             <div>
               <label className={labelCls} style={{ color: t.fgSecondary }}>Payment Frequency</label>
-              <input className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.payment_frequency} onChange={e => set('payment_frequency', e.target.value)} />
+              <select className={inputCls} style={{ borderColor: t.border, color: t.fg, background: t.bg }} value={form.payment_frequency} onChange={e => set('payment_frequency', e.target.value)}>
+                <option value="">Select payment frequency</option>
+                <option value="One-time">One-time</option>
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Bi-weekly">Bi-weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Half-yearly">Half-yearly</option>
+                <option value="Annually">Annually</option>
+                <option value="Custom">Custom</option>
+              </select>
             </div>
           </div>
         </div>
@@ -219,8 +257,18 @@ function UploadView({ navigate }: PageProps & { role: Role }) {
 
         <div className={sectionCls} style={{ borderColor: t.border, background: t.surface }}>
           <h3 className="text-base font-semibold" style={{ color: t.fg }}>Documents</h3>
-          <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" className="block" onChange={e => setFile(e.target.files?.[0] || null)} />
-          {file && <div className="text-sm" style={{ color: t.muted }}>{file.name}</div>}
+           <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.doc,.txt,.csv,.json" className="block" onChange={e => setFiles(Array.from(e.target.files || []))} />
+           {files.length > 0 && (
+             <div className="text-sm space-y-1" style={{ color: t.muted }}>
+               {files.map((f, i) => (
+                 <div key={i} className="flex items-center justify-between gap-2">
+                   <span>{f.name} ({Math.round(f.size / 1024)} KB)</span>
+                   <button type="button" onClick={() => { setFiles(prev => prev.filter((_, idx) => idx !== i)); if (fileInputRef.current) fileInputRef.current.value = '' }} style={{ color: t.danger }} aria-label="Remove file">✕</button>
+                 </div>
+               ))}
+               <button type="button" onClick={() => { setFiles([]); if (fileInputRef.current) fileInputRef.current.value = '' }} className="text-xs underline" style={{ color: t.muted }}>Clear all</button>
+             </div>
+           )}
         </div>
 
         <div className="flex gap-3">
@@ -242,6 +290,9 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
   const [rejected, setRejected] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editSaved, setEditSaved] = useState(false)
+  const [documents, setDocuments] = useState<any[]>([])
+  const [creatorId, setCreatorId] = useState<number | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [contractData, setContractData] = useState<any>({
     title: '',
     category: '',
@@ -274,34 +325,39 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
   useEffect(() => {
     const id = Number(localStorage.getItem('selectedContractId'))
     if (!id) return
-    contractsApi.get(id).then((c: any) => setContractData({
-      title: c.title || '',
-      category: c.contract_type || '',
-      dept: c.department || '',
-      owner: c.owner || '',
-      value: c.value ? (typeof c.value === 'string' ? c.value : `$${c.value}`) : '',
-      effectiveDate: c.effective_date || '',
-      expiryDate: c.expiry_date || '',
-      paymentTerms: c.payment_terms || '',
-      autoRenewal: c.auto_renewal || '',
-      governingLaw: c.governing_law || '',
-      terminationNotice: c.termination_notice_period || '',
-      slaUptime: c.sla_uptime || '',
-      summary: c.summary || '',
-      reference_number: c.reference_number || '',
-      provider_name: c.provider_name || '',
-      provider_email: c.provider_email || '',
-      customer_name: c.customer_name || '',
-      customer_email: c.customer_email || '',
-      additional_parties: c.additional_parties || '',
-      currency: c.currency || '',
-      payment_frequency: c.payment_frequency || '',
-      renewal_period: c.renewal_period || '',
-      renewal_notice_period: c.renewal_notice_period || '',
-      description: c.description || '',
-      key_terms: c.key_terms || '',
-      compliance_requirements: c.compliance_requirements || '',
-    })).catch(() => {})
+    authApi.me().then((u: any) => setCurrentUserId(u?.id ?? null)).catch(() => {})
+    contractsApi.get(id).then((c: any) => {
+      setCreatorId(c?.created_by ?? null)
+      setContractData({
+        title: c.title || '',
+        category: c.contract_type || '',
+        dept: c.department || '',
+        owner: c.owner || '',
+        value: c.value ? (typeof c.value === 'string' ? c.value : `${currencySymbol(c.currency)}${c.value}`) : '',
+        effectiveDate: c.effective_date || '',
+        expiryDate: c.expiry_date || '',
+        paymentTerms: c.payment_terms || '',
+        autoRenewal: c.auto_renewal || '',
+        governingLaw: c.governing_law || '',
+        terminationNotice: c.termination_notice_period || '',
+        slaUptime: c.sla_uptime || '',
+        summary: c.summary || '',
+        reference_number: c.reference_number || '',
+        provider_name: c.provider_name || '',
+        provider_email: c.provider_email || '',
+        customer_name: c.customer_name || '',
+        customer_email: c.customer_email || '',
+        additional_parties: c.additional_parties || '',
+        currency: c.currency || '',
+        payment_frequency: c.payment_frequency || '',
+        renewal_period: c.renewal_period || '',
+        renewal_notice_period: c.renewal_notice_period || '',
+        description: c.description || '',
+        key_terms: c.key_terms || '',
+        compliance_requirements: c.compliance_requirements || '',
+        sla_uptime: c.sla_uptime || '',
+      })
+    }).then(() => { contractsApi.documents(id).then((d: any) => setDocuments(d || [])).catch(() => setDocuments([])) }).catch(() => {})
   }, [])
 
   const handleEditSave = () => {
@@ -356,7 +412,7 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { const a = document.createElement('a'); a.href = '#'; a.download = 'ServiceNow_MSA_v3.2.pdf'; a.click() }}
+            onClick={() => { const a = document.createElement('a'); a.href = '#'; a.download = (contractData.title || 'contract') + '.pdf'; a.click() }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium"
             style={{ borderColor: t.border, color: t.fgSecondary, background: t.surface }}>
             <Download size={15} />Download
@@ -378,7 +434,7 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
             style={{ borderColor: t.border, color: t.fgSecondary, background: t.surface }}>
             <GitBranch size={15} />Versions
           </button>
-          {canApprove(role) && (!approved && !rejected ? (
+          {canApprove(role) && !(creatorId !== null && currentUserId !== null && creatorId === currentUserId) && (!approved && !rejected ? (
             <>
               <button onClick={() => setShowApproveDialog(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: t.success }}><CheckCircle2 size={15} />Approve</button>
               <button onClick={() => setShowRejectDialog(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: t.danger }}><X size={15} />Reject</button>
@@ -490,7 +546,37 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
               </div>
             </div>
           )}
-          {(activeTab !== 'Overview' && activeTab !== 'Obligations') && (
+          {activeTab === 'Documents' && (
+            <div className="rounded-2xl border p-5" style={{ borderColor: t.border, background: t.surface }}>
+              <h4 className="text-sm font-semibold mb-4" style={{ color: t.fg }}>Documents</h4>
+              {documents.length === 0 ? (
+                <p className="text-sm" style={{ color: t.muted }}>No documents uploaded</p>
+              ) : (
+                <div className="space-y-2">
+                  {documents.map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border" style={{ borderColor: t.border, background: t.bg }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Paperclip size={14} style={{ color: t.primary }} />
+                        <div className="min-w-0">
+                          <a href={`/uploads/${d.file_path}`} target="_blank" rel="noreferrer" className="text-sm font-medium truncate" style={{ color: t.primary }}>
+                            {d.file_name || d.file_path}
+                          </a>
+                          <div className="text-xs" style={{ color: t.mutedLight }}>
+                            {String(d.file_name || '').split('.').pop()?.toUpperCase() || 'FILE'}
+                            {d.file_size ? ` · ${Math.round(d.file_size / 1024)} KB` : ''}
+                            {d.created_at ? ` · ${new Date(d.created_at).toLocaleDateString()}` : ''}
+                            {d.status ? ` · ${d.status}` : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <a href={`/uploads/${d.file_path}`} target="_blank" rel="noreferrer" className="text-xs font-medium" style={{ color: t.primary }}>Preview</a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {(activeTab !== 'Overview' && activeTab !== 'Obligations' && activeTab !== 'Documents') && (
             <div className="rounded-2xl border p-8 text-center" style={{ borderColor: t.border, background: t.surface }}>
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: t.borderLight }}>
                 {activeTab === 'Documents' ? <Paperclip size={20} style={{ color: t.mutedLight }} /> :
@@ -506,9 +592,9 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
           <div className="rounded-2xl border p-5" style={{ borderColor: t.border, background: t.surface }}>
             <h4 className="text-sm font-semibold mb-4" style={{ color: t.fg }}>Parties</h4>
             {[
-              { role: 'Service Provider', name: 'ServiceNow, Inc.', contact: 'legal@servicenow.com' },
-              { role: 'Customer', name: 'ContractIQ Enterprise', contact: 'james.okafor@contractiq.com' },
-            ].map(party => (
+              { role: 'Service Provider', name: contractData.provider_name || '', contact: contractData.provider_email || '' },
+              { role: 'Customer', name: contractData.customer_name || '', contact: contractData.customer_email || '' },
+            ].filter(p => p.name || p.contact).map(party => (
               <div key={party.role} className="mb-3 last:mb-0">
                 <div className="text-xs mb-1" style={{ color: t.mutedLight }}>{party.role}</div>
                 <div className="text-sm font-medium" style={{ color: t.fg }}>{party.name}</div>
@@ -548,7 +634,7 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
           <div className="flex items-center justify-center w-16 h-16 rounded-2xl mx-auto mb-4" style={{ background: t.successBg }}>
             <CheckCircle2 size={28} style={{ color: t.success }} />
           </div>
-          <p className="text-center text-sm mb-2" style={{ color: t.fg }}>You're approving <strong>ServiceNow Master Agreement</strong></p>
+          <p className="text-center text-sm mb-2" style={{ color: t.fg }}>You're approving <strong>{contractData.title}</strong></p>
           <p className="text-center text-xs mb-6" style={{ color: t.muted }}>This action will notify all stakeholders and update the contract status.</p>
           <textarea placeholder="Add approval note (optional)" className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none mb-4"
             style={{ borderColor: t.border, color: t.fg, background: t.bg }} rows={3} />
@@ -565,7 +651,7 @@ function DetailsView({ navigate, role }: PageProps & { role: Role }) {
           <div className="flex items-center justify-center w-16 h-16 rounded-2xl mx-auto mb-4" style={{ background: t.dangerBg }}>
             <X size={28} style={{ color: t.danger }} />
           </div>
-          <p className="text-center text-sm mb-2" style={{ color: t.fg }}>Rejecting <strong>ServiceNow Master Agreement</strong></p>
+          <p className="text-center text-sm mb-2" style={{ color: t.fg }}>Rejecting <strong>{contractData.title}</strong></p>
           <p className="text-center text-xs mb-4" style={{ color: t.muted }}>Please provide a reason for rejection.</p>
           <textarea placeholder="Reason for rejection (required)" className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none mb-4"
             style={{ borderColor: t.border, color: t.fg, background: t.bg }} rows={3} />
@@ -623,7 +709,7 @@ export function Contracts({ navigate, view, role }: ContractsProps) {
         category: c.category || c.contract_type || '',
         dept: c.dept || c.department || '',
         owner: c.owner || '',
-        value: c.value ? (typeof c.value === 'string' ? c.value : `$${c.value}`) : '$0',
+        value: c.value ? (typeof c.value === 'string' ? c.value : `${currencySymbol(c.currency)}${c.value}`) : `${currencySymbol(c.currency)}0`,
         expiry: c.expiry || c.expiry_date || '',
         risk: c.risk || c.risk_level || 'low',
         obligations: c.obligations || 0,
@@ -809,7 +895,7 @@ export function Contracts({ navigate, view, role }: ContractsProps) {
                 style={{ borderColor: t.border, background: t.surface, boxShadow: t.cardShadow }}
                 onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = t.cardShadowHover; (e.currentTarget as HTMLDivElement).style.borderColor = t.muted }}
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = t.cardShadow; (e.currentTarget as HTMLDivElement).style.borderColor = t.border }}
-                onClick={() => navigate('contract-details')}
+                onClick={() => { localStorage.setItem('selectedContractId', String(contract.id)); navigate('contract-details') }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: t.infoBg }}>
@@ -898,7 +984,7 @@ export function Contracts({ navigate, view, role }: ContractsProps) {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-1">
-                        <button className="p-1.5 rounded-lg transition-all" style={{ color: t.mutedLight }} onClick={e => { e.stopPropagation(); navigate('contract-details') }}>
+                        <button className="p-1.5 rounded-lg transition-all" style={{ color: t.mutedLight }} onClick={e => { e.stopPropagation(); localStorage.setItem('selectedContractId', String(contract.id)); navigate('contract-details') }}>
                           <Eye size={15} />
                         </button>
                         <button className="p-1.5 rounded-lg transition-all" style={{ color: t.mutedLight }} onClick={e => e.stopPropagation()}>

@@ -29,8 +29,10 @@ export function Compliance({ navigate }: PageProps) {
     low: { bg: t.successBg, text: t.success, border: t.success + '40', icon: <CheckCircle2 size={16} /> },
   }
 
-  const overall = 94.2
-  const totalIssues = departmentCompliance.reduce((s, d) => s + d.issues, 0)
+  const totalComplianceItems = alerts.length
+  const completedComplianceItems = alerts.filter((a: any) => a.status === 'completed').length
+  const overall = totalComplianceItems ? Math.round((completedComplianceItems / totalComplianceItems) * 100) : 0
+  const totalIssues = alerts.filter((a: any) => a.status !== 'completed').length
 
   return (
     <div className="p-6 space-y-6">
@@ -94,15 +96,15 @@ export function Compliance({ navigate }: PageProps) {
             </div>
           </div>
           <div className="text-sm font-semibold" style={{ color: t.fg }}>Compliance Score</div>
-          <div className="flex items-center gap-1 text-xs mt-1" style={{ color: t.success }}>
-            <TrendingUp size={12} />+2.1% vs last month
+          <div className="flex items-center gap-1 text-xs mt-1" style={{ color: t.muted }}>
+            Based on compliance items
           </div>
         </div>
 
         {[
-          { label: 'Open Issues', value: totalIssues, sub: 'Across all depts', color: t.danger, bg: t.dangerBg, trend: '-3 this week' },
-          { label: 'At Risk Contracts', value: 12, sub: 'Need remediation', color: t.warning, bg: t.warningBg, trend: '-2 resolved' },
-          { label: 'Passed Reviews', value: 187, sub: 'This quarter', color: t.primary, bg: t.primaryBg, trend: '+27 this month' },
+          { label: 'Open Issues', value: totalIssues, sub: 'Across all depts', color: t.danger, bg: t.dangerBg, trend: '' },
+          { label: 'At Risk Contracts', value: alerts.filter((a: any) => a.severity === 'high' || a.severity === 'critical').length, sub: 'Need remediation', color: t.warning, bg: t.warningBg, trend: '' },
+          { label: 'Passed Reviews', value: completedComplianceItems, sub: 'This quarter', color: t.primary, bg: t.primaryBg, trend: '' },
         ].map(card => (
           <div key={card.label} className="rounded-2xl border p-6" style={{ borderColor: t.border, background: t.surface }}>
             <div className="p-2.5 rounded-xl w-fit mb-4" style={{ background: card.bg }}>
