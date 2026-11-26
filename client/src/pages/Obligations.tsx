@@ -65,11 +65,12 @@ export function Obligations({ navigate }: PageProps) {
     (o.title.toLowerCase().includes(search.toLowerCase()) || o.contract.toLowerCase().includes(search.toLowerCase()))
   )
 
+  const now = new Date()
   const stats = {
     total: obligations.length,
     completed: obligations.filter(o => o.status === 'done').length,
     inProgress: obligations.filter(o => o.status === 'in-progress').length,
-    overdue: 3,
+    overdue: obligations.filter(o => o.status !== 'done' && o.due_date && new Date(o.due_date) < now).length,
   }
 
   return (
@@ -426,7 +427,7 @@ export function Obligations({ navigate }: PageProps) {
                 <div>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: t.fgSecondary }}>Contract</label>
                   <select className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor: t.border, color: t.fg, background: t.bg }}>
-                    {['ServiceNow MSA', 'Oracle License', 'Microsoft Azure', 'AWS Infrastructure', 'Salesforce CRM'].map(c => <option key={c}>{c}</option>)}
+                    {([] as any[]).map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>

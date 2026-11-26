@@ -58,11 +58,17 @@ class Contract(Base):
     file_path = Column(String, default="")
     extracted_text = Column(Text, default="")
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_by_name = Column(String, default="")
+    approved_by_role = Column(String, default="")
+    approved_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(Text, default="")
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now, onupdate=now)
 
     obligations = relationship("Obligation", back_populates="contract", cascade="all, delete-orphan")
     renewals = relationship("Renewal", back_populates="contract", cascade="all, delete-orphan")
+    documents = relationship("ContractDocument", back_populates="contract", cascade="all, delete-orphan")
 
 
 class Obligation(Base):
@@ -145,3 +151,16 @@ class PasswordResetToken(Base):
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=now)
+
+class ContractDocument(Base):
+    __tablename__ = "contract_documents"
+    id = Column(Integer, primary_key=True, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False, index=True)
+    file_name = Column(String, default="")
+    file_path = Column(String, default="")
+    file_size = Column(Integer, default=0)
+    status = Column(String, default="uploaded")
+    extracted_text = Column(Text, default="")
+    created_at = Column(DateTime, default=now)
+
+    contract = relationship("Contract", back_populates="documents")

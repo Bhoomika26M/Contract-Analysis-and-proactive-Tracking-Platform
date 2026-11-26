@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { PageProps, Role } from '../types'
 import { useTheme } from '../context/ThemeContext'
 import { ExportModal } from '../components/ExportModal'
+import { contractsApi, usersApi, obligationsApi, renewalsApi, auditApi, complianceApi } from '../api'
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -18,23 +19,236 @@ interface DashboardProps extends PageProps {
 
 export function Dashboard({ navigate, role }: DashboardProps) {
   const { theme: t } = useTheme()
-  const monthlyData: any[] = []
-  const complianceTrend: any[] = []
-  const departmentData: any[] = []
-  const riskData: any[] = []
-  const recentActivities: any[] = []
-  const upcomingDeadlines: any[] = []
-  const approvalQueue: any[] = []
-  const highRiskContracts: any[] = []
-  const myObligations: any[] = []
-  const roleNames: any = {}
-  const filterData: any = { all: { kpis: { users:'0', contracts:'0', pending:'0', compliance:'0%', userChange:'', contractChange:'', pendingChange:'', complianceChange:'', userUp:true, contractUp:true, pendingUp:true, complianceUp:true, userSub:'', contractSub:'', pendingSub:'', complianceSub:'' }, chartData: monthlyData, complianceTrendData: complianceTrend, deptData: departmentData, riskData, activities: recentActivities, deadlines: upcomingDeadlines, pieValues: [0,0,0,0] } }
   const [filter, setFilter] = useState('all')
+  const roleNames: any = { administrator: 'Administrator', 'legal-manager': 'Legal Manager', 'compliance-officer': 'Compliance Officer', 'contract-manager': 'Contract Manager', 'department-head': 'Department Head', employee: 'Employee' }
+  const [raw, setRaw] = useState<any>({ contracts: [], users: [], obligations: [], renewals: [], auditLogs: [], compliance: [] })
+  const [loading, setLoading] = useState(true)
+  const riskData: any[] = []
+  const [error, setError] = useState('')
+
+  const loadDashboard = () => {
+    setLoading(true)
+    Promise.all([
+      contractsApi.list().catch(() => []),
+      usersApi.list().catch(() => []),
+      obligationsApi.list().catch(() => []),
+      renewalsApi.list().catch(() => []),
+      auditApi.list().catch(() => []),
+      complianceApi.list().catch(() => []),
+    ]).then(([contracts, users, obligations, renewals, auditLogs, compliance]) => {
+      setRaw({ contracts: contracts || [], users: users || [], obligations: obligations || [], renewals: renewals || [], auditLogs: auditLogs || [], compliance: compliance || [] })
+      setError('')
+    }).catch((e) => { setError(e?.message || 'Failed to load dashboard data') })
+      .finally(() => { setLoading(false) })
+  }
+
+  useEffect(() => {
+    loadDashboard()
+    const handler = () => loadDashboard()
+    window.addEventListener('contractiq:refresh-dashboard', handler)
+    return () => window.removeEventListener('contractiq:refresh-dashboard', handler)
+  }, [])
+
+  const inRange = (value: any, f: string) => {
+    if (f === 'all') return true
+    if (!value) return false
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return true
+    const now = new Date()
+    const days = f === '30d' ? 30 : f === '90d' ? 90 : 365
+    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+    if (f === 'ytd') return d.getFullYear() === now.getFullYear()
+    return d >= start
+  }
+
+  const fd = useMemo(() => {
+    const allContracts = raw.contracts || []
+    const contracts = allContracts.filter((c: any) => inRange(c.created_at || c.effective_date, filter))
+    const users = raw.users || []
+    const obligations = (raw.obligations || []).filter((o: any) => inRange(o.created_at || o.due_date, filter))
+    const renewals = (raw.renewals || []).filter((r: any) => inRange(r.created_at || r.renewal_date, filter))
+    const auditLogs = (raw.auditLogs || []).filter((a: any) => inRange(a.created_at, filter))
+    const compliance = raw.compliance || []
+
+    const activeContracts = allContracts.filter((c: any) => c.status === 'active').length
+    const pendingApprovals = allContracts.filter((c: any) => c.status === 'pending').length
+    const totalObligations = (raw.obligations || []).length
+    const completedObligations = (raw.obligations || []).filter((o: any) => o.status === 'completed').length
+    const complianceRate = totalObligations ? Math.round((completedObligations / totalObligations) * 100) : 0
+
+    const expiringSoon = allContracts.filter((c: any) => {
+      if (!c.expiry_date) return false
+      const d = new Date(c.expiry_date)
+      const now = new Date()
+      const diff = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      return diff >= 0 && diff <= 30
+    }).length
+
+    const atRisk = allContracts.filter((c: any) => c.risk_level === 'high' || c.risk_level === 'critical').length
+    const obligationsPending = (raw.obligations || []).filter((o: any) => o.status !== 'completed').length
+    const renewalsPending = renewals.filter((r: any) => r.status === 'pending').length
+
+    const pieValues = [activeContracts, expiringSoon, pendingApprovals, atRisk]
+
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const buckets: Record<string, { month: string; new: number; expired: number; renewals: number }> = {}
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = d.getFullYear() + '-' + d.getMonth()
+      buckets[key] = { month: monthNames[d.getMonth()], new: 0, expired: 0, renewals: 0 }
+    }
+    allContracts.forEach((c: any) => {
+      if (c.created_at) {
+        const d = new Date(c.created_at)
+        const key = d.getFullYear() + '-' + d.getMonth()
+        if (buckets[key]) buckets[key].new += 1
+      }
+      if (c.expiry_date) {
+        const d = new Date(c.expiry_date)
+        const key = d.getFullYear() + '-' + d.getMonth()
+        if (buckets[key] && d < now) buckets[key].expired += 1
+      }
+    })
+    renewals.forEach((r: any) => {
+      if (r.renewal_date) {
+        const d = new Date(r.renewal_date)
+        const key = d.getFullYear() + '-' + d.getMonth()
+        if (buckets[key]) buckets[key].renewals += 1
+      }
+    })
+    const chartData = Object.values(buckets)
+
+    const deptMap: Record<string, { total: number; completed: number }> = {}
+    allContracts.forEach((c: any) => {
+      const dept = c.department || 'Unknown'
+      if (!deptMap[dept]) deptMap[dept] = { total: 0, completed: 0 }
+    })
+    compliance.forEach((ci: any) => {
+      const contract = allContracts.find((c: any) => c.id === ci.contract_id)
+      const dept = contract?.department || 'Unknown'
+      if (!deptMap[dept]) deptMap[dept] = { total: 0, completed: 0 }
+      deptMap[dept].total += 1
+      if (ci.status === 'completed') deptMap[dept].completed += 1
+    })
+    const deptData = Object.entries(deptMap).map(([dept, v]) => ({
+      dept,
+      compliance: v.total ? Math.round((v.completed / v.total) * 100) : 0,
+    }))
+
+    const activities = auditLogs.slice(0, 8).map((a: any, i: number) => ({
+      id: a.id || i,
+      user: a.user_name || 'System',
+      action: a.action || '',
+      target: a.details || a.resource || '',
+      time: a.created_at ? new Date(a.created_at).toLocaleString() : '',
+      color: t.primary,
+      icon: null,
+    }))
+
+    const auditSummary = auditLogs.slice(0, 6).map((a: any, i: number) => ({
+      id: a.id || i,
+      type: a.action === 'deleted' ? 'security' : a.action === 'updated' ? 'admin' : 'info',
+      action: a.action || '',
+      user: a.user_name || 'System',
+      time: a.created_at ? new Date(a.created_at).toLocaleString() : '',
+    }))
+
+    const deadlines = allContracts
+      .filter((c: any) => c.expiry_date)
+      .map((c: any) => {
+        const d = new Date(c.expiry_date)
+        const daysLeft = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        return { contract: c.title, type: 'Expiry', value: c.value ? `${c.value}` : '', daysLeft, priority: daysLeft <= 7 ? 'critical' : daysLeft <= 30 ? 'high' : 'medium' }
+      })
+      .filter((x: any) => x.daysLeft >= 0 && x.daysLeft <= 60)
+      .slice(0, 8)
+
+    const renewalDeadlines = renewals
+      .filter((r: any) => r.renewal_date)
+      .map((r: any) => {
+        const c = allContracts.find((cc: any) => cc.id === r.contract_id)
+        const d = new Date(r.renewal_date)
+        const daysLeft = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        return { contract: c?.title || 'Contract', type: 'Renewal', value: r.value ? `${r.value}` : '', daysLeft, priority: daysLeft <= 7 ? 'critical' : daysLeft <= 30 ? 'high' : 'medium' }
+      })
+      .filter((x: any) => x.daysLeft >= 0 && x.daysLeft <= 60)
+      .slice(0, 8)
+
+    const allDeadlines = [...deadlines, ...renewalDeadlines]
+      .sort((a: any, b: any) => a.daysLeft - b.daysLeft)
+      .slice(0, 8)
+
+    const riskScore = (level: any) => ({ critical: 95, high: 80, medium: 50, low: 20 }[String(level || 'low').toLowerCase()] || 20)
+    const highRiskContracts = allContracts
+      .filter((c: any) => c.risk_level === 'high' || c.risk_level === 'critical')
+      .slice(0, 8)
+      .map((c: any) => ({ name: c.title, category: c.contract_type || '', risk: riskScore(c.risk_level), value: c.value ? `${c.value}` : '', issue: c.risk_level }))
+
+    const approvalQueue = allContracts
+      .filter((c: any) => c.status === 'pending')
+      .slice(0, 8)
+      .map((c: any) => ({ contract: c.title, requestedBy: c.owner || '', dept: c.department || '', submitted: c.created_at ? new Date(c.created_at).toLocaleDateString() : '', value: c.value ? `${c.value}` : '', urgency: c.risk_level === 'high' || c.risk_level === 'critical' ? 'high' : 'medium' }))
+
+    const contractList = allContracts.slice(0, 8).map((c: any) => ({
+      title: c.title,
+      expiry: c.expiry_date || '',
+      value: c.value ? `${c.value}` : '',
+      status: c.status || 'draft',
+      progress: c.compliance_score ? Math.round(c.compliance_score) : 0,
+    }))
+
+    const myObligations = (raw.obligations || []).slice(0, 8).map((o: any) => {
+      const c = allContracts.find((cc: any) => cc.id === o.contract_id)
+      return { title: o.title, contract: c?.title || '', due: o.due_date || '', status: o.status || 'pending' }
+    })
+
+    return {
+      kpis: {
+        users: String(users.length),
+        contracts: String(activeContracts),
+        pending: String(pendingApprovals),
+        compliance: complianceRate + '%',
+        userChange: '', contractChange: '', pendingChange: '', complianceChange: '',
+        userUp: true, contractUp: true, pendingUp: true, complianceUp: true,
+        userSub: 'registered users', contractSub: 'active contracts', pendingSub: 'awaiting approval', complianceSub: 'compliance rate',
+      },
+      chartData,
+      deptData,
+      activities,
+      auditSummary,
+      deadlines: allDeadlines,
+      pieValues,
+      auditLogs,
+      totalContracts: allContracts.length,
+      activeContracts,
+      pendingApprovals,
+      expiringSoon,
+      complianceRate,
+      totalUsers: users.length,
+      obligationsPending,
+      renewalsPending,
+      atRisk,
+      highRiskContracts,
+      approvalQueue,
+      contractList,
+      myObligations,
+    }
+  }, [filter, raw, t])
+
+  const monthlyData = fd.chartData
+  const departmentData = fd.deptData
+  const recentActivities = fd.activities
+  const upcomingDeadlines = fd.deadlines
+  const approvalQueue: any[] = fd.approvalQueue
+  const highRiskContracts: any[] = fd.highRiskContracts
+  const myObligations: any[] = fd.myObligations
+  const complianceTrend: any[] = fd.chartData
+
   const [exportOpen, setExportOpen] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-  const fd = filterData[filter] || filterData.all
 
   const pieData = [
     { name: 'Active', value: fd.pieValues[0], color: t.success },
@@ -106,6 +320,9 @@ export function Dashboard({ navigate, role }: DashboardProps) {
       )}
     </div>
   )
+
+  if (loading) return <div className="p-6" style={{ color: t.muted }}>Loading dashboard data...</div>
+  if (error) return <div className="p-6"><p style={{ color: t.danger }}>{error}</p><button onClick={loadDashboard} className="mt-2 px-3 py-1.5 rounded-lg border text-sm" style={{ borderColor: t.border, color: t.fg }}>Retry</button></div>
 
   // ── ADMINISTRATOR ──
   if (role === 'administrator') {
@@ -193,25 +410,32 @@ export function Dashboard({ navigate, role }: DashboardProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <SectionHeader title="Department Compliance" action="View all" onClick={() => navigate('compliance')} />
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={fd.deptData} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                <XAxis dataKey="dept" tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} />
-                <YAxis domain={[70, 100]} tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} unit="%" />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="compliance" name="Compliance %" radius={[6, 6, 0, 0]}>
-                  {departmentData.map((entry, i) => (
-                    <Cell key={i} fill={entry.compliance >= 90 ? t.primary : entry.compliance >= 85 ? t.warning : t.danger} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
+             {fd.deptData.length === 0 ? (
+               <p className="text-sm" style={{ color: t.muted }}>No department compliance data</p>
+             ) : (
+             <ResponsiveContainer width="100%" height={220}>
+               <BarChart data={fd.deptData} barSize={28}>
+                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                 <XAxis dataKey="dept" tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} />
+                 <YAxis domain={[70, 100]} tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} unit="%" />
+                 <Tooltip content={<CustomTooltip />} />
+                 <Bar dataKey="compliance" name="Compliance %" radius={[6, 6, 0, 0]}>
+                   {departmentData.map((entry, i) => (
+                     <Cell key={i} fill={entry.compliance >= 90 ? t.primary : entry.compliance >= 85 ? t.warning : t.danger} />
+                   ))}
+                 </Bar>
+               </BarChart>
+             </ResponsiveContainer>
+             )
+             }
+           </Card>
 
           <Card>
             <SectionHeader title="Audit Summary" action="View logs" onClick={() => navigate('audit-logs')} />
             <div className="space-y-3">
-              {([] as any[]).map((item, i) => (
+              {fd.auditSummary.length === 0 ? (
+                <p className="text-sm" style={{ color: t.muted }}>No audit activity yet</p>
+              ) : fd.auditSummary.map((item, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: t.bg }}>
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: item.type === 'security' ? t.dangerBg : item.type === 'admin' ? t.purpleBg : t.infoBg }}>
@@ -231,6 +455,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
           <Card>
             <SectionHeader title="Recent Activity" action="View logs" onClick={() => navigate('audit-logs')} />
             <div className="space-y-4">
+              {fd.activities.length === 0 && <p className="text-sm" style={{ color: t.muted }}>No recent activity</p>}
               {fd.activities.map(activity => (
                 <div key={activity.id} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${activity.color}18`, color: activity.color }}>
@@ -251,6 +476,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
           <Card>
             <SectionHeader title="Upcoming Deadlines" action="All renewals" onClick={() => navigate('renewals')} />
             <div className="space-y-3">
+              {fd.deadlines.length === 0 && <p className="text-sm" style={{ color: t.muted }}>No upcoming deadlines</p>}
               {fd.deadlines.map(item => {
                 const priority = priorityColors[item.priority] || { bg: t.bg, text: t.muted }
                 return (
@@ -300,10 +526,10 @@ export function Dashboard({ navigate, role }: DashboardProps) {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Under Review" value="23" change="+5" up={false} icon={<FileText size={20} />} color={t.info} bg={t.infoBg} sub="pending legal review" />
-          <KpiCard label="Approval Queue" value="14" change="+3" up={false} icon={<Clock size={20} />} color={t.warning} bg={t.warningBg} sub="awaiting your sign-off" />
-          <KpiCard label="Upcoming Renewals" value="18" change="+4" up icon={<RefreshCw size={20} />} color={t.primary} bg={t.primaryBg} sub="next 30 days" />
-          <KpiCard label="Reviewed This Month" value="42" change="+12" up icon={<CheckCircle2 size={20} />} color={t.success} bg={t.successBg} sub="contracts reviewed" />
+          <KpiCard label="Under Review" value={String(fd.pendingApprovals)} change="" up={false} icon={<FileText size={20} />} color={t.info} bg={t.infoBg} sub="pending legal review" />
+          <KpiCard label="Approval Queue" value={String(fd.pendingApprovals)} change="" up={false} icon={<Clock size={20} />} color={t.warning} bg={t.warningBg} sub="awaiting your sign-off" />
+          <KpiCard label="Upcoming Renewals" value={String(fd.renewalsPending || fd.expiringSoon)} change="" up icon={<RefreshCw size={20} />} color={t.primary} bg={t.primaryBg} sub="next 30 days" />
+          <KpiCard label="Reviewed This Month" value={String(fd.activeContracts)} change="" up icon={<CheckCircle2 size={20} />} color={t.success} bg={t.successBg} sub="contracts reviewed" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -345,20 +571,15 @@ export function Dashboard({ navigate, role }: DashboardProps) {
             <Card>
               <SectionHeader title="Legal Notices" />
               <div className="space-y-3">
-                {[
-                  { title: 'Force Majeure clause update required', priority: 'high', due: 'Jul 30' },
-                  { title: 'GDPR addendum needed — EU contracts', priority: 'high', due: 'Aug 1' },
-                  { title: 'Indemnification review — IT dept', priority: 'medium', due: 'Aug 5' },
-                  { title: 'Termination clause standardization', priority: 'low', due: 'Aug 15' },
-                ].map((n, i) => (
+                {upcomingDeadlines.length === 0 ? <p className="text-sm" style={{ color: t.muted }}>No notices</p> : upcomingDeadlines.map((n, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all"
                     style={{ background: t.bg }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.background = t.surfaceHover)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = t.bg)}>
-                    <AlertTriangle size={14} style={{ color: n.priority === 'high' ? t.danger : n.priority === 'medium' ? t.warning : t.info, flexShrink: 0, marginTop: 2 }} />
+                    <AlertTriangle size={14} style={{ color: n.priority === 'high' || n.priority === 'critical' ? t.danger : n.priority === 'medium' ? t.warning : t.info, flexShrink: 0, marginTop: 2 }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: t.fg }}>{n.title}</p>
-                      <p className="text-xs" style={{ color: t.muted }}>Due {n.due}</p>
+                      <p className="text-sm font-medium" style={{ color: t.fg }}>{n.contract}</p>
+                      <p className="text-xs" style={{ color: t.muted }}>Due in {n.daysLeft} days</p>
                     </div>
                   </div>
                 ))}
@@ -405,7 +626,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
 
   // ── COMPLIANCE OFFICER ──
   if (role === 'compliance-officer') {
-    const complianceScore = 94.2
+    const complianceScore = fd.complianceRate
     return (
       <div className="p-6 space-y-6 max-w-[1600px]">
         <div className="flex items-start justify-between">
@@ -429,9 +650,9 @@ export function Dashboard({ navigate, role }: DashboardProps) {
             </div>
             <p className="text-xs mt-2 flex items-center gap-1" style={{ color: t.successText }}><TrendingUp size={11} /> +2.1% this month</p>
           </div>
-          <KpiCard label="High Risk Contracts" value="12" change="-3" up={false} icon={<AlertTriangle size={20} />} color={t.danger} bg={t.dangerBg} sub="need attention" />
-          <KpiCard label="Missed Obligations" value="7" change="+2" up={false} icon={<CheckSquare size={20} />} color={t.warning} bg={t.warningBg} sub="overdue tasks" />
-          <KpiCard label="Audit Alerts" value="4" change="-1" up={false} icon={<Bell size={20} />} color={t.info} bg={t.infoBg} sub="require review" />
+          <KpiCard label="High Risk Contracts" value={String(fd.atRisk)} change="" up={false} icon={<AlertTriangle size={20} />} color={t.danger} bg={t.dangerBg} sub="need attention" />
+          <KpiCard label="Missed Obligations" value={String(fd.obligationsPending)} change="" up={false} icon={<CheckSquare size={20} />} color={t.warning} bg={t.warningBg} sub="overdue tasks" />
+          <KpiCard label="Audit Alerts" value={String(fd.auditLogs.length)} change="" up={false} icon={<Bell size={20} />} color={t.info} bg={t.infoBg} sub="require review" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -500,31 +721,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
           <Card>
             <SectionHeader title="Compliance Reports" action="View all" onClick={() => navigate('reports')} />
             <div className="space-y-3">
-              {[
-                { title: 'Q2 2025 Compliance Summary', date: 'Jul 1, 2025', status: 'published', score: 94 },
-                { title: 'High Risk Contract Analysis', date: 'Jun 28, 2025', status: 'draft', score: null },
-                { title: 'GDPR Compliance Audit', date: 'Jun 15, 2025', status: 'published', score: 97 },
-                { title: 'SOC 2 Readiness Report', date: 'Jun 10, 2025', status: 'review', score: 89 },
-              ].map((r, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                  style={{ background: t.bg }}
-                  onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.background = t.surfaceHover)}
-                  onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = t.bg)}
-                  onClick={() => navigate('reports')}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: t.infoBg }}>
-                    <BarChart2 size={16} style={{ color: t.info }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: t.fg }}>{r.title}</p>
-                    <p className="text-xs" style={{ color: t.muted }}>{r.date}</p>
-                  </div>
-                  {r.score && <span className="text-sm font-bold" style={{ color: r.score >= 90 ? t.success : t.warning }}>{r.score}%</span>}
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{
-                    background: r.status === 'published' ? t.successBg : r.status === 'review' ? t.warningBg : t.bg,
-                    color: r.status === 'published' ? t.successText : r.status === 'review' ? t.warningText : t.muted,
-                  }}>{r.status}</span>
-                </div>
-              ))}
+              <p className="text-sm" style={{ color: t.muted }}>No reports</p>
             </div>
           </Card>
         </div>
@@ -549,10 +746,10 @@ export function Dashboard({ navigate, role }: DashboardProps) {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="My Contracts" value="45" change="+3" up icon={<FileText size={20} />} color={t.primary} bg={t.primaryBg} sub="assigned to me" />
-          <KpiCard label="Pending Uploads" value="6" change="+2" up={false} icon={<Plus size={20} />} color={t.warning} bg={t.warningBg} sub="awaiting upload" />
-          <KpiCard label="Renewal Timeline" value="8" change="+1" up={false} icon={<RefreshCw size={20} />} color={t.danger} bg={t.dangerBg} sub="expiring in 30d" />
-          <KpiCard label="Completed" value="189" change="+27" up icon={<CheckCircle2 size={20} />} color={t.success} bg={t.successBg} sub="this quarter" />
+          <KpiCard label="My Contracts" value={String(fd.totalContracts)} change="" up icon={<FileText size={20} />} color={t.primary} bg={t.primaryBg} sub="assigned to me" />
+          <KpiCard label="Pending Uploads" value={String(fd.pendingApprovals)} change="" up={false} icon={<Plus size={20} />} color={t.warning} bg={t.warningBg} sub="awaiting upload" />
+          <KpiCard label="Renewal Timeline" value={String(fd.expiringSoon)} change="" up={false} icon={<RefreshCw size={20} />} color={t.danger} bg={t.dangerBg} sub="expiring in 30d" />
+          <KpiCard label="Completed" value={String(fd.activeContracts)} change="" up icon={<CheckCircle2 size={20} />} color={t.success} bg={t.successBg} sub="this quarter" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -560,7 +757,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
             <Card>
               <SectionHeader title="Contract Repository" action="View all" onClick={() => navigate('contracts')} />
               <div className="space-y-2">
-                {([] as any[]).map((c, i) => (
+                {fd.contractList.length === 0 ? <p className="text-sm" style={{ color: t.muted }}>No contracts</p> : fd.contractList.map((c, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
                     style={{ borderColor: t.border }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.background = t.surfaceHover)}
@@ -642,17 +839,17 @@ export function Dashboard({ navigate, role }: DashboardProps) {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Dept Contracts" value="68" change="+4" up icon={<FileText size={20} />} color={t.primary} bg={t.primaryBg} sub="Technology dept" />
-          <KpiCard label="Team Compliance" value="91%" change="+1.2%" up icon={<Shield size={20} />} color={t.success} bg={t.successBg} sub="dept average" />
-          <KpiCard label="Assigned Obligations" value="23" change="-5" up={false} icon={<CheckSquare size={20} />} color={t.warning} bg={t.warningBg} sub="team pending" />
-          <KpiCard label="Upcoming Renewals" value="11" change="+2" up={false} icon={<RefreshCw size={20} />} color={t.info} bg={t.infoBg} sub="next 60 days" />
+          <KpiCard label="Dept Contracts" value={String(fd.totalContracts)} change="" up icon={<FileText size={20} />} color={t.primary} bg={t.primaryBg} sub="Technology dept" />
+          <KpiCard label="Team Compliance" value={fd.kpis.compliance} change="" up icon={<Shield size={20} />} color={t.success} bg={t.successBg} sub="dept average" />
+          <KpiCard label="Assigned Obligations" value={String(fd.obligationsPending)} change="" up={false} icon={<CheckSquare size={20} />} color={t.warning} bg={t.warningBg} sub="team pending" />
+          <KpiCard label="Upcoming Renewals" value={String(fd.expiringSoon)} change="" up={false} icon={<RefreshCw size={20} />} color={t.info} bg={t.infoBg} sub="next 60 days" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <SectionHeader title="Department Contracts" action="View all" onClick={() => navigate('contracts')} />
             <div className="space-y-3">
-              {([] as any[]).map((c, i) => (
+              {fd.contractList.length === 0 ? <p className="text-sm" style={{ color: t.muted }}>No contracts</p> : fd.contractList.map((c, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
                   style={{ borderColor: t.border }}
                   onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.background = t.surfaceHover)}
@@ -663,7 +860,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium" style={{ color: t.fg }}>{c.title}</p>
-                    <p className="text-xs" style={{ color: t.muted }}>{c.owner} · Expires {c.expiry}</p>
+                    <p className="text-xs" style={{ color: t.muted }}>Expires {c.expiry}</p>
                   </div>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{
                     background: c.status === 'expiring' ? t.warningBg : t.successBg,
@@ -763,23 +960,17 @@ export function Dashboard({ navigate, role }: DashboardProps) {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Assigned Contracts" value="5" change="+1" up icon={<FileText size={20} />} color={t.primary} bg={t.primaryBg} sub="assigned to me" />
-        <KpiCard label="My Obligations" value="8" change="-2" up={false} icon={<CheckSquare size={20} />} color={t.warning} bg={t.warningBg} sub="pending tasks" />
-        <KpiCard label="Upcoming Renewals" value="2" change="0" up icon={<RefreshCw size={20} />} color={t.info} bg={t.infoBg} sub="this quarter" />
-        <KpiCard label="Notifications" value="7" change="+3" up={false} icon={<Bell size={20} />} color={t.danger} bg={t.dangerBg} sub="unread" />
+        <KpiCard label="Assigned Contracts" value={String(fd.totalContracts)} change="" up icon={<FileText size={20} />} color={t.primary} bg={t.primaryBg} sub="assigned to me" />
+        <KpiCard label="My Obligations" value={String(fd.obligationsPending)} change="" up={false} icon={<CheckSquare size={20} />} color={t.warning} bg={t.warningBg} sub="pending tasks" />
+        <KpiCard label="Upcoming Renewals" value={String(fd.expiringSoon)} change="" up icon={<RefreshCw size={20} />} color={t.info} bg={t.infoBg} sub="this quarter" />
+        <KpiCard label="Notifications" value={String(fd.auditLogs.length)} change="" up={false} icon={<Bell size={20} />} color={t.danger} bg={t.dangerBg} sub="unread" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <SectionHeader title="Assigned Contracts" action="View all" onClick={() => navigate('contracts')} />
           <div className="space-y-3">
-            {[
-              { title: 'AWS Infrastructure Services', status: 'active', expiry: 'Jun 30, 2026', role: 'Reviewer' },
-              { title: 'Slack Business Plan', status: 'expiring', expiry: 'Jul 15, 2025', role: 'Owner' },
-              { title: 'Zoom Enterprise License', status: 'active', expiry: 'Dec 31, 2025', role: 'Reviewer' },
-              { title: 'Microsoft Azure Services', status: 'active', expiry: 'Jan 15, 2026', role: 'Stakeholder' },
-              { title: 'Jira & Confluence Suite', status: 'active', expiry: 'Apr 30, 2026', role: 'Reviewer' },
-            ].map((c, i) => (
+            {fd.contractList.length === 0 ? <p className="text-sm" style={{ color: t.muted }}>No contracts</p> : fd.contractList.map((c, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
                 style={{ borderColor: t.border }}
                 onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.background = t.surfaceHover)}
@@ -790,7 +981,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium" style={{ color: t.fg }}>{c.title}</p>
-                  <p className="text-xs" style={{ color: t.muted }}>Expires {c.expiry} · {c.role}</p>
+                  <p className="text-xs" style={{ color: t.muted }}>Expires {c.expiry} · {c.status}</p>
                 </div>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{
                   background: c.status === 'expiring' ? t.warningBg : t.successBg,
@@ -830,10 +1021,7 @@ export function Dashboard({ navigate, role }: DashboardProps) {
         <Card>
           <SectionHeader title="Renewal Status" action="View" onClick={() => navigate('renewals')} />
           <div className="space-y-3">
-            {[
-              { contract: 'Slack Business Plan', daysLeft: 12, status: 'expiring soon' },
-              { contract: 'Zoom Enterprise License', daysLeft: 154, status: 'active' },
-            ].map((r, i) => (
+            {upcomingDeadlines.length === 0 ? <p className="text-sm" style={{ color: t.muted }}>No renewals</p> : upcomingDeadlines.slice(0, 2).map((r, i) => (
               <div key={i} className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderColor: t.border }}>
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: r.daysLeft <= 30 ? t.warningBg : t.successBg }}>
                   <RefreshCw size={20} style={{ color: r.daysLeft <= 30 ? t.warningText : t.successText }} />
@@ -845,14 +1033,14 @@ export function Dashboard({ navigate, role }: DashboardProps) {
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{
                   background: r.daysLeft <= 30 ? t.warningBg : t.successBg,
                   color: r.daysLeft <= 30 ? t.warningText : t.successText,
-                }}>{r.status}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+                 }}>{r.daysLeft <= 30 ? 'expiring soon' : 'active'}</span>
+               </div>
+             ))}
+           </div>
+         </Card>
 
-        <Card>
-          <SectionHeader title="Recent Activities" action="View all" onClick={() => navigate('notifications')} />
+         <Card>
+           <SectionHeader title="Recent Activities" action="View all" onClick={() => navigate('notifications')} />
           <div className="space-y-4">
             {recentActivities.slice(0, 4).map(a => (
               <div key={a.id} className="flex items-start gap-3">

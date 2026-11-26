@@ -15,7 +15,7 @@ const formats: { id: ExportFormat; label: string; desc: string; icon: React.Reac
   { id: 'Excel', label: 'Excel Export', desc: 'Formatted workbook with multiple sheets',  icon: <FileSpreadsheet size={18} />, colorKey: 'success' },
 ]
 
-// Generate realistic file content for each format
+// Generate file content for each format (no dummy/sample data)
 function generateBlob(format: ExportFormat): { blob: Blob; filename: string } {
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -23,14 +23,6 @@ function generateBlob(format: ExportFormat): { blob: Blob; filename: string } {
   if (format === 'CSV') {
     const csv = [
       'Contract ID,Contract Name,Counterparty,Type,Status,Value,Start Date,End Date,Owner,Obligations',
-      'CTR-2024-001,Software License Agreement,Acme Corp,License,Active,"$240,000",2024-01-15,2025-01-14,Sarah Chen,12',
-      'CTR-2024-002,Service Level Agreement,TechVentures Inc,SLA,Active,"$85,000",2024-02-01,2025-01-31,James Wilson,8',
-      'CTR-2024-003,Non-Disclosure Agreement,GlobalParts Ltd,NDA,Active,"$0",2024-03-10,2027-03-09,Emily Rodriguez,3',
-      'CTR-2024-004,Vendor Supply Contract,Meridian Supplies,Supply,Under Review,"$1,200,000",2024-04-01,2026-03-31,Michael Torres,21',
-      'CTR-2024-005,Consulting Services Agreement,Apex Consulting,Services,Active,"$320,000",2024-05-15,2024-11-14,Lisa Park,7',
-      'CTR-2024-006,Master Service Agreement,DataBridge LLC,MSA,Expired,"$450,000",2023-06-01,2024-05-31,Chris Nguyen,15',
-      'CTR-2024-007,Employment Contract,N/A,Employment,Active,"$95,000",2024-07-01,2025-06-30,HR Department,5',
-      'CTR-2024-008,Real Estate Lease,Parkview Properties,Lease,Active,"$180,000",2024-08-01,2027-07-31,Facilities,4',
       '',
       `Report generated: ${dateStr}`,
       'ContractIQ — Enterprise Contract Management',
@@ -63,12 +55,7 @@ function generateBlob(format: ExportFormat): { blob: Blob; filename: string } {
         <Cell ss:StyleID="header"><Data ss:Type="String">Owner</Data></Cell>
         <Cell ss:StyleID="header"><Data ss:Type="String">Obligations</Data></Cell>
       </Row>
-      <Row><Cell><Data ss:Type="String">CTR-2024-001</Data></Cell><Cell><Data ss:Type="String">Software License Agreement</Data></Cell><Cell><Data ss:Type="String">Acme Corp</Data></Cell><Cell><Data ss:Type="String">License</Data></Cell><Cell><Data ss:Type="String">Active</Data></Cell><Cell><Data ss:Type="Number">240000</Data></Cell><Cell><Data ss:Type="String">2024-01-15</Data></Cell><Cell><Data ss:Type="String">2025-01-14</Data></Cell><Cell><Data ss:Type="String">Sarah Chen</Data></Cell><Cell><Data ss:Type="Number">12</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="String">CTR-2024-002</Data></Cell><Cell><Data ss:Type="String">Service Level Agreement</Data></Cell><Cell><Data ss:Type="String">TechVentures Inc</Data></Cell><Cell><Data ss:Type="String">SLA</Data></Cell><Cell><Data ss:Type="String">Active</Data></Cell><Cell><Data ss:Type="Number">85000</Data></Cell><Cell><Data ss:Type="String">2024-02-01</Data></Cell><Cell><Data ss:Type="String">2025-01-31</Data></Cell><Cell><Data ss:Type="String">James Wilson</Data></Cell><Cell><Data ss:Type="Number">8</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="String">CTR-2024-003</Data></Cell><Cell><Data ss:Type="String">Non-Disclosure Agreement</Data></Cell><Cell><Data ss:Type="String">GlobalParts Ltd</Data></Cell><Cell><Data ss:Type="String">NDA</Data></Cell><Cell><Data ss:Type="String">Active</Data></Cell><Cell><Data ss:Type="Number">0</Data></Cell><Cell><Data ss:Type="String">2024-03-10</Data></Cell><Cell><Data ss:Type="String">2027-03-09</Data></Cell><Cell><Data ss:Type="String">Emily Rodriguez</Data></Cell><Cell><Data ss:Type="Number">3</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="String">CTR-2024-004</Data></Cell><Cell><Data ss:Type="String">Vendor Supply Contract</Data></Cell><Cell><Data ss:Type="String">Meridian Supplies</Data></Cell><Cell><Data ss:Type="String">Supply</Data></Cell><Cell><Data ss:Type="String">Under Review</Data></Cell><Cell><Data ss:Type="Number">1200000</Data></Cell><Cell><Data ss:Type="String">2024-04-01</Data></Cell><Cell><Data ss:Type="String">2026-03-31</Data></Cell><Cell><Data ss:Type="String">Michael Torres</Data></Cell><Cell><Data ss:Type="Number">21</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="String">CTR-2024-005</Data></Cell><Cell><Data ss:Type="String">Consulting Services Agreement</Data></Cell><Cell><Data ss:Type="String">Apex Consulting</Data></Cell><Cell><Data ss:Type="String">Services</Data></Cell><Cell><Data ss:Type="String">Active</Data></Cell><Cell><Data ss:Type="Number">320000</Data></Cell><Cell><Data ss:Type="String">2024-05-15</Data></Cell><Cell><Data ss:Type="String">2024-11-14</Data></Cell><Cell><Data ss:Type="String">Lisa Park</Data></Cell><Cell><Data ss:Type="Number">7</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="String">CTR-2024-006</Data></Cell><Cell><Data ss:Type="String">Master Service Agreement</Data></Cell><Cell><Data ss:Type="String">DataBridge LLC</Data></Cell><Cell><Data ss:Type="String">MSA</Data></Cell><Cell><Data ss:Type="String">Expired</Data></Cell><Cell><Data ss:Type="Number">450000</Data></Cell><Cell><Data ss:Type="String">2023-06-01</Data></Cell><Cell><Data ss:Type="String">2024-05-31</Data></Cell><Cell><Data ss:Type="String">Chris Nguyen</Data></Cell><Cell><Data ss:Type="Number">15</Data></Cell></Row>
+
     </Table>
   </Worksheet>
   <Worksheet ss:Name="Summary">
@@ -106,26 +93,7 @@ BT
 (EXECUTIVE SUMMARY) Tj
 /F1 10 Tf
 0 -20 Td
-(Total Contracts: 124) Tj
-0 -16 Td
-(Active Contracts: 89) Tj
-0 -16 Td
-(Expiring within 30 days: 7) Tj
-0 -16 Td
-(Overdue obligations: 3) Tj
-0 -16 Td
-(Total Contract Value: $4,285,000) Tj
-0 -40 Td
-(TOP CONTRACTS BY VALUE) Tj
-/F1 10 Tf
-0 -20 Td
-(CTR-2024-004  Vendor Supply Contract    Meridian Supplies    $1,200,000) Tj
-0 -16 Td
-(CTR-2024-006  Master Service Agreement  DataBridge LLC       $450,000) Tj
-0 -16 Td
-(CTR-2024-005  Consulting Services       Apex Consulting      $320,000) Tj
-0 -16 Td
-(CTR-2024-001  Software License          Acme Corp            $240,000) Tj
+(No contract data available) Tj
 ET
 endstream
 endobj

@@ -142,7 +142,8 @@ def _send_reset_email(to_email: str, link: str):
             + ". Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM and FRONTEND_URL.",
         )
     msg = EmailMessage()
-    msg["Subject"] = "ContractIQ password reset"
+    msg["Subject"] = "ContractIQ Password Reset - Delivery Test"
+    msg["Message-ID"] = f"<{__import__('uuid').uuid4()}@contractiq>"
     msg["From"] = sender
     msg["To"] = to_email
     msg.set_content(
@@ -157,7 +158,10 @@ def _send_reset_email(to_email: str, link: str):
                 server.ehlo()
                 if user and password:
                     server.login(user, password)
-                server.send_message(msg)
+                refused = server.send_message(msg)
+                if refused:
+                    logger.error("SMTP refused recipients: %s", refused)
+                    raise HTTPException(status_code=500, detail="Email delivery failed: recipient refused")
         else:
             context = ssl.create_default_context()
             with smtplib.SMTP(host, port, timeout=30) as server:
@@ -166,7 +170,10 @@ def _send_reset_email(to_email: str, link: str):
                 server.ehlo()
                 if user and password:
                     server.login(user, password)
-                server.send_message(msg)
+                refused = server.send_message(msg)
+                if refused:
+                    logger.error("SMTP refused recipients: %s", refused)
+                    raise HTTPException(status_code=500, detail="Email delivery failed: recipient refused")
     except smtplib.SMTPAuthenticationError as e:
         logger.exception("SMTP authentication failed")
         raise HTTPException(status_code=500, detail=f"SMTP authentication failed: {e}")
@@ -189,6 +196,8 @@ def forgot_password(payload: schemas.ForgotPasswordRequest, db: Session = Depend
             + ". Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM and FRONTEND_URL.",
         )
     email = payload.email
+    host, port, smtp_user, smtp_pass, sender, frontend, missing = _smtp_config()
+    logger.info("Password reset requested for %s via %s:%s", email[:3] + "***", host, port)
     user = db.query(models.User).filter(models.User.email == email).first()
     # Always respond generically to avoid account enumeration.
     if user and user.is_active:
@@ -208,6 +217,7 @@ def forgot_password(payload: schemas.ForgotPasswordRequest, db: Session = Depend
         frontend = os.getenv("FRONTEND_URL", "http://localhost:8443")
         link = f"{frontend}/?reset_token={raw_token}"
         _send_reset_email(user.email, link)
+        logger.info("Password reset email accepted by SMTP for %s", email[:3] + "***")
     return {"message": "If the account exists, reset instructions have been sent to the email address."}
 
 

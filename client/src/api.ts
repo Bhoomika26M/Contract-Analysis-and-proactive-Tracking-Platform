@@ -51,9 +51,12 @@ export const contractsApi = {
   create: (payload: any) => api<any>('/api/contracts', { method: 'POST', body: JSON.stringify(payload) }),
   update: (id: number, payload: any) => api<any>(`/api/contracts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   remove: (id: number) => api<void>(`/api/contracts/${id}`, { method: 'DELETE' }),
-  upload: (file: File, meta?: any) => {
+  approve: (id: number) => api<any>(`/api/contracts/${id}/approve`, { method: 'POST' }),
+  reject: (id: number, reason?: string) => api<any>(`/api/contracts/${id}/reject?reason=${encodeURIComponent(reason || '')}`, { method: 'POST' }),
+  upload: (fileOrFiles: File | File[], meta?: any) => {
     const fd = new FormData()
-    fd.append('file', file)
+    const arr = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles]
+    arr.forEach(f => fd.append('files', f))
     if (meta) {
       Object.keys(meta).forEach(k => {
         if (meta[k] !== undefined && meta[k] !== null && meta[k] !== '') fd.append(k, String(meta[k]))
@@ -61,6 +64,20 @@ export const contractsApi = {
     }
     const token = getToken()
     return fetch('/api/contracts/upload', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    }).then(async r => {
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText)
+      return r.json()
+    })
+  },
+  documents: (id: number) => api<any[]>(`/api/contracts/${id}/documents`),
+  addDocuments: (id: number, files: File[]) => {
+    const fd = new FormData()
+    files.forEach(f => fd.append('files', f))
+    const token = getToken()
+    return fetch(`/api/contracts/${id}/documents`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: fd,

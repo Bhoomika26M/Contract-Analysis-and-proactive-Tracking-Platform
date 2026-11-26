@@ -28,6 +28,11 @@ def migrate():
         existing = {row[1] for row in cur.fetchall()}
         columns = {
             "reference_number": "TEXT DEFAULT ''",
+            "approved_by": "INTEGER",
+            "approved_by_name": "TEXT DEFAULT ''",
+            "approved_by_role": "TEXT DEFAULT ''",
+            "approved_at": "TEXT",
+            "rejection_reason": "TEXT DEFAULT ''",
             "provider_name": "TEXT DEFAULT ''",
             "provider_email": "TEXT DEFAULT ''",
             "customer_name": "TEXT DEFAULT ''",
@@ -48,6 +53,16 @@ def migrate():
         for name, decl in columns.items():
             if name not in existing:
                 cur.execute(f"ALTER TABLE contracts ADD COLUMN {name} {decl}")
+        # migrate contract_documents
+        cur.execute("PRAGMA table_info(contract_documents)")
+        existing_docs = {row[1] for row in cur.fetchall()}
+        doc_columns = {
+            "file_size": "INTEGER DEFAULT 0",
+            "status": "TEXT DEFAULT 'uploaded'",
+        }
+        for name, decl in doc_columns.items():
+            if name not in existing_docs:
+                cur.execute(f"ALTER TABLE contract_documents ADD COLUMN {name} {decl}")
         conn.commit()
         conn.close()
     except Exception:
